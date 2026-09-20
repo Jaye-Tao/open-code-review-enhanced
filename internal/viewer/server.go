@@ -10,13 +10,14 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 )
 
-//go:embed templates/*.html static/style.css static/pager.js static/a11y.js static/session.js static/repos.js static/sessions.js static/icons/*.svg
+//go:embed templates/*.html static/style.css static/pager.js static/a11y.js static/session.js static/repos.js static/sessions.js static/actions.js static/compare.js static/icons/*.svg
 var assets embed.FS
 
 // iconNameRE guards the icon() template helper: names are hard-coded in
@@ -103,13 +104,8 @@ func StartServer(addr, openMode string) error {
 	return <-serveErr
 }
 
-// newMux builds the viewer's routing table against a sessions root. The
-// viewer is read-only: the document routes are registered with GET-only
-// patterns (which also serve HEAD), so the ServeMux itself answers any other
-// method with 405 + Allow before a handler runs. The root pattern matches
-// exactly "/" via {$}; every other unmatched path gets the ServeMux's 404.
-// New routes must register method-qualified patterns to keep this contract
-// testable (TestMux_HasNoWriteRoutes).
+// newMux builds method-qualified document and action routes. Only the explicit
+// delete endpoint mutates records, after verifying a same-origin confirmation.
 func newMux(root string) *http.ServeMux {
 	mux := http.NewServeMux()
 
@@ -138,6 +134,11 @@ func newMux(root string) *http.ServeMux {
 		}
 		handleCompare(w, r, root, repo)
 	})
+	mux.HandleFunc("GET /r/{repo}/compare/export.html", func(w http.ResponseWriter, r *http.Request) {
+		repo := r.PathValue("repo")
+		if unsafeSegment(repo) { http.Error(w, "invalid repo path", http.StatusBadRequest); return }
+		handleCompareExport(w, r, root, repo)
+	})
 	mux.HandleFunc("GET /r/{repo}/{sessionID}", func(w http.ResponseWriter, r *http.Request) {
 		repo := r.PathValue("repo")
 		sid := r.PathValue("sessionID")
@@ -148,6 +149,19 @@ func newMux(root string) *http.ServeMux {
 		handleSession(w, r, root, repo, sid)
 	})
 
+	for pattern, handler := range map[string]func(http.ResponseWriter, *http.Request, string, string, string){
+		"GET /r/{repo}/{sessionID}/export.md": handleMarkdown,
+		"DELETE /r/{repo}/{sessionID}/delete": handleDeleteSession,
+	} {
+		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
+			repo, id := r.PathValue("repo"), r.PathValue("sessionID")
+			if unsafeSegment(repo) || unsafeSegment(id) {
+				http.Error(w, "invalid path", http.StatusBadRequest)
+				return
+			}
+			handler(w, r, root, repo, id)
+		})
+	}
 	return mux
 }
 
@@ -174,7 +188,7 @@ func displayURL(requestedAddr, listenerAddr string) (string, error) {
 // segment, so "%2F" and "%5C" arrive here as real separators; "\" is one on
 // Windows, so it is rejected everywhere "/" is.
 func unsafeSegment(s string) bool {
-	return strings.Contains(s, "..") || strings.ContainsAny(s, `/\`)
+	return s == "" || !filepath.IsLocal(s) || strings.Contains(s, "..") || strings.ContainsAny(s, `/\:`)
 }
 
 var cstZone = func() *time.Location {
@@ -328,10 +342,16 @@ func parseTemplate(name string) (*template.Template, error) {
 		"formatDuration": formatDuration,
 		"formatTime":     formatTime,
 		"truncate":       truncateText,
+		"taskLabel":      func(t TaskType) string { return taskLabel(t) },
+		"modeLabel":      modeLabel,
+		"statusLabel":    statusLabel,
+		"severityLabel":  severityLabel,
+		"categoryLabel":  categoryLabel,
 		"formatNumber":   formatNumber,
 		"icon":           inlineIcon,
 		"dict":           dictKV,
 		"add":            func(a, b int) int { return a + b },
+		"progressPercent": func(s SessionSummary) int { return s.ProgressPercent() },
 		"countLabel": func(n int, singular, plural string) string {
 			if n == 1 {
 				return strconv.Itoa(n) + " " + singular
@@ -364,7 +384,7 @@ func parseTemplate(name string) (*template.Template, error) {
 		"sessionTaskLabel": func(fp string) string {
 			switch fp {
 			case "__grouping__":
-				return "File Grouping"
+				return viewerText("File Grouping")
 			default:
 				return fp
 			}
@@ -412,6 +432,7 @@ func parseTemplate(name string) (*template.Template, error) {
 			}
 			return groups
 		},
+		"fixPriority":     fixPriority,
 		"severityCounts":  severityCounts,
 		"categoryCounts":  categoryCounts,
 		"commentCategory": normalizedCommentCategory,

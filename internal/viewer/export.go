@@ -49,7 +49,15 @@ func ExportSession(out io.Writer, root, encodedRepo, sessionID string) error {
 	if err != nil {
 		return fmt.Errorf("read embedded script: %w", err)
 	}
-	js = []byte(string(a11y) + "\n" + string(js))
+	actions, err := assets.ReadFile("static/actions.js")
+	if err != nil {
+		return fmt.Errorf("read embedded actions: %w", err)
+	}
+	pager, err := assets.ReadFile("static/pager.js")
+	if err != nil {
+		return fmt.Errorf("read embedded pager: %w", err)
+	}
+	js = []byte(string(pager) + "\n" + string(a11y) + "\n" + string(js) + "\n" + string(actions))
 
 	tmpl, err := parseTemplate("session.html")
 	if err != nil {

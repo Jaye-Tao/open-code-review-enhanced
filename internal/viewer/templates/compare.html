@@ -1,69 +1,18 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Compare - Open Code Review Viewer</title>
-
-    <link rel="stylesheet" href="/static/style.css">
-</head>
-<body>
-{{template "app-header" .}}
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>会话对比 - Open Code Review</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>{{template "app-header" .}}
 <main class="compare-page">
-<div class="session-header">
-    <div class="page-heading">
-        <a class="back-link" href="/r/{{.EncodedRepo}}" aria-label="Back to sessions">{{icon "chevron-left"}}</a>
-        <h2>Compare sessions</h2>
-    </div>
-    <div class="meta">
-        <span><strong>Before:</strong> <a href="/r/{{.EncodedRepo}}/{{.Before.SessionID}}"><code>{{truncate 12 .Before.SessionID}}</code></a></span>
-        <span><strong>After:</strong> <a href="/r/{{.EncodedRepo}}/{{.After.SessionID}}"><code>{{truncate 12 .After.SessionID}}</code></a></span>
-        <span><strong>Mode:</strong> {{if .Before.ReviewMode}}{{.Before.ReviewMode}}{{else}}-{{end}} to {{if .After.ReviewMode}}{{.After.ReviewMode}}{{else}}-{{end}}</span>
-    </div>
-    {{if .Warning}}
-    <div class="meta"><span><span class="badge badge-error">warning</span> {{.Warning}}</span></div>
-    {{end}}
-</div>
-
-{{/* The range variable below is a model.LlmComment: .Path, not the viewer's .FilePath. */}}
-{{/* Bucket titles are fixed strings from handleCompare; the tone class is chosen
-   from them here so the Go side stays untouched. The "{{.Title}} (N)" text is
-   asserted verbatim by compare_test.go — keep it contiguous. */}}
-{{range .Buckets}}
-<section class="compare-bucket {{if eq .Title "New"}}bucket-new{{else if eq .Title "Persisting"}}bucket-persisting{{else if eq .Title "Resolved"}}bucket-resolved{{else if eq .Title "Not reviewed"}}bucket-not-reviewed{{else}}bucket-unknown{{end}}">
-    <h3 class="compare-bucket-title"><span class="bucket-dot" aria-hidden="true"></span>{{.Title}} ({{len .Findings}})</h3>
-    {{range .Findings}}
-    <div class="comment-card">
-        <div class="comment-meta">
-            {{if .Category}}<span class="comment-badge {{categoryClass .Category}}">{{.Category}}</span>{{end}}
-            {{if .Severity}}<span class="comment-badge {{severityClass .Severity}}">{{.Severity}}</span>{{end}}
-            <span class="comment-lines">{{.Path}}{{if .StartLine}}:L{{.StartLine}}{{if and .EndLine (ne .EndLine .StartLine)}}-L{{.EndLine}}{{end}}{{end}}</span>
-        </div>
-        <div class="comment-content">{{.Content}}</div>
-        {{if or .ExistingCode .SuggestionCode}}
-        <div class="comment-code-diff">
-            {{if .ExistingCode}}
-            <div class="code-panel code-existing">
-                <div class="code-panel-label">Existing Code</div>
-                <pre><code>{{.ExistingCode}}</code></pre>
-            </div>
-            {{end}}
-            {{if .SuggestionCode}}
-            <div class="code-panel code-suggestion">
-                <div class="code-panel-label">Suggested Change</div>
-                <pre><code>{{.SuggestionCode}}</code></pre>
-            </div>
-            {{end}}
-        </div>
-        {{end}}
-    </div>
-    {{else}}
-    <p class="empty-state-text">none</p>
-    {{end}}
-</section>
-{{end}}
-</main>
-</body>
-</html>
-
-{{define "breadcrumbs"}}<span class="sep">/</span><a href="/r/{{.EncodedRepo}}">{{.RepoName}}</a><span class="sep">/</span><span class="current">compare</span>{{end}}
+    <div class="page-heading page-heading-with-tools"><div><p class="eyebrow">审核分析</p><h1>会话对比</h1><p class="page-subtitle">对比两次审核的问题变化，确认哪些问题已消失、仍然存在，或尚未复查。</p></div><div class="compare-page-actions"><a class="button button-secondary" href="/r/{{.EncodedRepo}}">返回会话</a><a class="button button-primary" href="/r/{{.EncodedRepo}}/compare/export.html?before={{.Before.SessionID}}&amp;after={{.After.SessionID}}" download>导出 HTML</a></div></div>
+    <section class="compare-context"><div class="compare-run"><span class="compare-run-label">审核前</span><a href="/r/{{.EncodedRepo}}/{{.Before.SessionID}}"><code>{{truncate 18 .Before.SessionID}}</code></a><small>{{formatTime .Before.Timestamp}} · {{modeLabel .Before.ReviewMode}}</small></div><div class="compare-context-arrow">→</div><div class="compare-run"><span class="compare-run-label">审核后</span><a href="/r/{{.EncodedRepo}}/{{.After.SessionID}}"><code>{{truncate 18 .After.SessionID}}</code></a><small>{{formatTime .After.Timestamp}} · {{modeLabel .After.ReviewMode}}</small></div></section>
+    {{if .Warning}}<div class="notice notice-warning"><strong>需要注意</strong><span>{{.Warning}}</span></div>{{end}}
+    <section class="compare-summary"><div class="compare-summary-head"><div><h2>结果概览</h2><p>按问题状态查看本次对比结果。</p></div><span class="compare-summary-note">{{.After.CompletedCount}} 个文件已完成复查</span></div><div class="compare-metrics"><div class="metric metric-new"><span>新增问题</span><strong>{{len (index .Buckets 0).Findings}}</strong><small>仅在审核后出现</small></div><div class="metric metric-persisting"><span>仍未修复</span><strong>{{len (index .Buckets 1).Findings}}</strong><small>两次审核均存在</small></div><div class="metric metric-resolved"><span>疑似已修复</span><strong>{{len (index .Buckets 2).Findings}}</strong><small>已复查文件中消失</small></div><div class="metric metric-unknown"><span>尚未复查</span><strong>{{len (index .Buckets 3).Findings}}</strong><small>无法判断修复状态</small></div></div></section>
+    <section class="compare-toolbar"><div class="compare-filter-label">筛选结果</div><div class="compare-filters"><button class="compare-filter is-active" data-compare-filter="all">全部</button><button class="compare-filter" data-compare-filter="new">新增</button><button class="compare-filter" data-compare-filter="persisting">未修复</button><button class="compare-filter" data-compare-filter="resolved">疑似已修复</button><button class="compare-filter" data-compare-filter="not-reviewed">尚未复查</button></div><span class="compare-help">问题多时可按状态筛选</span></section>
+    <div class="compare-buckets">
+    {{range .Buckets}}{{$bucket := .Title}}{{$kind := "not-reviewed"}}{{if eq .Title "New"}}{{$kind = "new"}}{{else if eq .Title "Persisting"}}{{$kind = "persisting"}}{{else if eq .Title "Resolved"}}{{$kind = "resolved"}}{{end}}
+    <section class="compare-bucket compare-bucket-{{$kind}}" data-compare-section="{{$kind}}"><div class="compare-bucket-heading"><div><h2>{{if eq .Title "New"}}新增问题{{else if eq .Title "Persisting"}}未修复问题{{else if eq .Title "Resolved"}}疑似已修复{{else}}尚未复查{{end}} <span>({{len .Findings}})</span></h2><p>{{if eq .Title "New"}}审核后新发现的问题，建议纳入当前修复计划。{{else if eq .Title "Persisting"}}两次审核都发现的问题，优先处理高风险项。{{else if eq .Title "Resolved"}}审核后未再发现的问题，仍建议结合测试和变更内容确认。{{else}}审核后没有成功复查的问题，不能直接视为已修复。{{end}}</p></div><span class="bucket-status">{{if eq .Title "New"}}新增{{else if eq .Title "Persisting"}}待处理{{else if eq .Title "Resolved"}}待确认{{else}}未知{{end}}</span></div>
+        <div class="compare-findings">{{range .Findings}}<article class="compare-finding" data-compare-item><div class="finding-topline"><span class="comment-badge mark-chip">ID {{.ID}}</span><span class="comment-badge {{categoryClass .Category}}">{{categoryLabel .Category}}</span><span class="comment-badge {{severityClass .Severity}}">{{severityLabel .Severity}}</span><span class="finding-path" title="{{.Path}}" data-copy-path="{{.Path}}">{{.Path}}</span><span class="comment-lines">{{if .StartLine}}第 {{.StartLine}} 行{{if and .EndLine (ne .EndLine .StartLine)}} - {{.EndLine}} 行{{end}}{{end}}</span></div>{{if or (eq $bucket "Persisting") (eq $bucket "New")}}<div class="fix-priority"><span>处理建议</span><strong>{{if eq (fixPriority .) "Fix first"}}优先修复{{else if eq (fixPriority .) "Recommended fix"}}建议修复{{else}}评估后排期{{end}}</strong></div>{{end}}<p class="finding-content">{{.Content}}</p>{{if or .ExistingCode .SuggestionCode}}<div class="comment-code-diff">{{if .ExistingCode}}<div class="code-panel code-existing"><div class="code-panel-label">现有代码</div><pre><code>{{.ExistingCode}}</code></pre></div>{{end}}{{if .SuggestionCode}}<div class="code-panel code-suggestion"><div class="code-panel-label">建议修改</div><pre><code>{{.SuggestionCode}}</code></pre></div>{{end}}</div>{{end}}</article>{{else}}<div class="bucket-empty">当前分类没有问题。</div>{{end}}</div><div class="compare-section-pager" data-compare-pager hidden></div>
+    </section>{{end}}</div>
+    <script src="/static/actions.js"></script><script src="/static/compare.js"></script>
+</main></body></html>
+{{define "breadcrumbs"}}<span class="sep">/</span><a href="/r/{{.EncodedRepo}}">{{.RepoName}}</a><span class="sep">/</span><span class="current">会话对比</span>{{end}}
