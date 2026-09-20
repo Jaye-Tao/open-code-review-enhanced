@@ -34,8 +34,10 @@
         return items;
     };
 
-    window.ocrPager = ({ table, pager, numbers, pageSize = 10, filter }) => {
-        const rows = Array.from(table.querySelectorAll("tbody tr"));
+    window.ocrPager = ({ table, pager, numbers, pageSize = 10, filter, rows: suppliedRows, onRender }) => {
+        const rows = suppliedRows || Array.from(table.querySelectorAll("tbody tr"));
+        const sizeControl = pager.querySelector("[data-page-size]");
+        if (sizeControl) sizeControl.value = String(pageSize);
         const steps = Array.from(pager.querySelectorAll("[data-page-step]"));
         const matches = filter || (() => true);
         let current = 1;
@@ -47,12 +49,13 @@
             // Filter once; both the page count and the visibility loop read
             // the same filtered list.
             const filtered = rows.filter(matches);
-            const total = Math.max(1, Math.ceil(filtered.length / pageSize));
+            const total = Math.max(1, Math.ceil(filtered.length / (pageSize || Math.max(1, filtered.length))));
             current = Math.min(Math.max(current, 1), total);
             for (const row of rows) {
                 row.hidden = true;
             }
-            for (const row of filtered.slice((current - 1) * pageSize, current * pageSize)) {
+            const size = pageSize || Math.max(1, filtered.length);
+            for (const row of filtered.slice((current - 1) * size, current * size)) {
                 row.hidden = false;
             }
 
@@ -71,7 +74,7 @@
                 button.type = "button";
                 button.className = "page-number";
                 button.textContent = String(item);
-                button.setAttribute("aria-label", `Page ${item}`);
+                button.setAttribute("aria-label", `第 ${item} 页`);
                 if (item === current) {
                     button.setAttribute("aria-current", "page");
                 }
@@ -93,13 +96,17 @@
                 if (fallback) fallback.focus({ preventScroll: true });
             }
 
-            pager.hidden = total < 2;
+            pager.hidden = false;
+            const summary = pager.querySelector("[data-pagination-summary]");
+            if (summary) summary.textContent = `${filtered.length} 条记录 · 第 ${current}/${total} 页`;
+            if (onRender) onRender(filtered);
         };
 
         for (const step of steps) {
             step.addEventListener("click", () => render(current + Number(step.dataset.pageStep)));
         }
 
+        if (sizeControl) sizeControl.addEventListener("change", () => { pageSize = Number(sizeControl.value); render(1); });
         render();
 
         return { refresh: () => render(1) };

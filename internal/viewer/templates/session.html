@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Session Detail - Open Code Review Viewer</title>
+    <title>审核会话详情 - Open Code Review</title>
 
     {{if $.Static}}<style>{{$.InlineCSS}}</style>{{else}}<link rel="stylesheet" href="/static/style.css">{{end}}
 </head>
@@ -12,72 +12,76 @@
 <main class="session-page">
 <div class="session-header">
     <div class="page-heading">
-        {{if not $.Static}}<a class="back-link" href="/r/{{.EncodedRepo}}" aria-label="Back to sessions">{{icon "chevron-left"}}</a>{{end}}
-        <h2>Session: {{.Session.Summary.SessionID}}</h2>
+        {{if not $.Static}}<a class="back-link" href="/r/{{.EncodedRepo}}" aria-label="返回会话">{{icon "chevron-left"}}</a>{{end}}
+        <h1>审核会话 <code>{{truncate 18 .Session.Summary.SessionID}}</code></h1>
     </div>
+    {{if not $.Static}}<div class="session-actions">
+        <a class="button button-secondary" href="/r/{{.EncodedRepo}}/{{.Session.Summary.SessionID}}/export.md" download>导出 Markdown</a>
+        <button class="button button-danger" type="button" data-delete-session="/r/{{.EncodedRepo}}/{{.Session.Summary.SessionID}}/delete" data-session-id="{{.Session.Summary.SessionID}}" data-return-url="/r/{{.EncodedRepo}}">删除会话</button>
+    </div>{{end}}
     <div class="meta">
-        <span class="meta-truncate" title="{{.Session.Summary.CWD}}"><strong>CWD:</strong> {{.Session.Summary.CWD}}</span>
-        <span class="meta-truncate" title="{{.Session.Summary.GitBranch}}"><strong>Branch:</strong> {{.Session.Summary.GitBranch}}</span>
-        <span><strong>Mode:</strong> {{if .Session.Summary.ReviewMode}}{{.Session.Summary.ReviewMode}}{{else}}-{{end}}</span>
+        <span class="meta-truncate" title="{{.Session.Summary.CWD}}" data-copy-path="{{.Session.Summary.CWD}}"><strong>目录</strong> {{.Session.Summary.CWD}}</span>
+        <span class="meta-truncate" title="{{.Session.Summary.GitBranch}}"><strong>分支</strong> {{.Session.Summary.GitBranch}}</span>
+        <span><strong>方式</strong> {{modeLabel .Session.Summary.ReviewMode}}</span>
         {{if eq .Session.Summary.ReviewMode "range"}}
-        <span><strong>From:</strong> <code>{{.Session.Summary.DiffFrom}}</code></span>
-        <span><strong>To:</strong> <code>{{.Session.Summary.DiffTo}}</code></span>
+        <span><strong>起点</strong> <code>{{.Session.Summary.DiffFrom}}</code></span>
+        <span><strong>终点</strong> <code>{{.Session.Summary.DiffTo}}</code></span>
         {{end}}
         {{if eq .Session.Summary.ReviewMode "commit"}}
-        <span><strong>Commit:</strong> <code>{{.Session.Summary.DiffCommit}}</code></span>
+        <span><strong>提交</strong> <code>{{.Session.Summary.DiffCommit}}</code></span>
         {{end}}
-        <span><strong>Model:</strong> <code>{{.Session.Summary.Model}}</code></span>
-        <span><strong>Duration:</strong> {{formatDuration .Session.Summary.DurationSec}}</span>
-        <span><strong>Files:</strong> {{.Session.Summary.FileCount}}</span>
-        <span><strong>Status:</strong> {{template "meta-status" .Session.Summary}}</span>
+        <span><strong>模型</strong> <code>{{.Session.Summary.Model}}</code></span>
+        <span><strong>耗时</strong> {{formatDuration .Session.Summary.DurationSec}}</span>
+        <span><strong>文件</strong> {{.Session.Summary.FileCount}}</span>
+        <span><strong>状态</strong> {{template "meta-status" .Session.Summary}}</span>
     </div>
 </div>
 
 {{if .Session.Summary.RunManifest}}
 <div class="token-summary">
-    <h3>Coverage</h3>
+    <h2>审核覆盖</h2>
     <div class="token-stats">
-        <div class="token-item"><div class="token-label">Selected</div><div class="token-value">{{.Session.Summary.SelectedCount}}</div></div>
-        <div class="token-item"><div class="token-label">Completed</div><div class="token-value">{{.Session.Summary.CompletedCount}}</div></div>
-        <div class="token-item"><div class="token-label">Reused</div><div class="token-value">{{.Session.Summary.ReusedCount}}</div></div>
-        <div class="token-item"><div class="token-label">Failed</div><div class="token-value{{if .Session.Summary.FailedCount}} token-value-error{{end}}">{{.Session.Summary.FailedCount}}</div></div>
-        <div class="token-item"><div class="token-label">Waived</div><div class="token-value">{{.Session.Summary.WaivedCount}}</div></div>
+        <div class="token-item"><div class="token-label">选中文件</div><div class="token-value">{{.Session.Summary.SelectedCount}}</div></div>
+        <div class="token-item"><div class="token-label">已完成</div><div class="token-value">{{.Session.Summary.CompletedCount}}</div></div>
+        <div class="token-item"><div class="token-label">复用结果</div><div class="token-value">{{.Session.Summary.ReusedCount}}</div></div>
+        <div class="token-item"><div class="token-label">失败</div><div class="token-value{{if .Session.Summary.FailedCount}} token-value-error{{end}}">{{.Session.Summary.FailedCount}}</div></div>
+        <div class="token-item"><div class="token-label">跳过</div><div class="token-value">{{.Session.Summary.WaivedCount}}</div></div>
     </div>
 </div>
 {{end}}
 
 <div class="token-summary">
-    <h3>Token Usage</h3>
+    <h2>Token 用量</h2>
     <div class="token-stats">
         <div class="token-item">
-            <div class="token-label">Prompt Tokens</div>
+            <div class="token-label">输入 Token</div>
             <div class="token-value" title="{{.Session.TokenUsage.TotalPromptTokens}}">{{formatNumber .Session.TokenUsage.TotalPromptTokens}}</div>
         </div>
         <div class="token-item">
-            <div class="token-label">Completion Tokens</div>
+            <div class="token-label">输出 Token</div>
             <div class="token-value" title="{{.Session.TokenUsage.TotalCompletionTokens}}">{{formatNumber .Session.TokenUsage.TotalCompletionTokens}}</div>
         </div>
         <div class="token-item">
-            <div class="token-label">Total Tokens</div>
+            <div class="token-label">Token 总量</div>
             <div class="token-value" title="{{add .Session.TokenUsage.TotalPromptTokens .Session.TokenUsage.TotalCompletionTokens}}">{{formatNumber (add .Session.TokenUsage.TotalPromptTokens .Session.TokenUsage.TotalCompletionTokens)}}</div>
         </div>
         <div class="token-item">
-            <div class="token-label">LLM Requests</div>
+            <div class="token-label">模型请求</div>
             <div class="token-value" title="{{.Session.TokenUsage.RequestCount}}">{{formatNumber .Session.TokenUsage.RequestCount}}</div>
         </div>
         {{if or .Session.TokenUsage.TotalCacheReadTokens .Session.TokenUsage.TotalCacheWriteTokens}}
         <div class="token-item">
-            <div class="token-label">Cache Read</div>
+            <div class="token-label">缓存读取</div>
             <div class="token-value" title="{{.Session.TokenUsage.TotalCacheReadTokens}}">{{formatNumber .Session.TokenUsage.TotalCacheReadTokens}}</div>
         </div>
         <div class="token-item">
-            <div class="token-label">Cache Write</div>
+            <div class="token-label">缓存写入</div>
             <div class="token-value" title="{{.Session.TokenUsage.TotalCacheWriteTokens}}">{{formatNumber .Session.TokenUsage.TotalCacheWriteTokens}}</div>
         </div>
         {{end}}
         {{if .Session.Summary.LLMFailures}}
         <div class="token-item">
-            <div class="token-label">LLM Failures</div>
+            <div class="token-label">请求失败</div>
             <div class="token-value token-value-error">{{.Session.Summary.LLMFailures}}</div>
         </div>
         {{end}}
@@ -86,16 +90,16 @@
     <details class="token-breakdown">
         <summary class="token-breakdown-toggle">
             <span class="chevron-sm" aria-hidden="true">{{icon "chevron-right"}}</span>
-            <span>File breakdown</span>
-            <span class="file-count-badge">{{countLabel (len .) "file" "files"}}</span>
+            <span>按文件统计</span>
+            <span class="file-count-badge">{{countLabel (len .) "个文件" "个文件"}}</span>
         </summary>
-        <div class="token-breakdown-body" role="region" aria-label="Token breakdown table">
+        <div class="token-breakdown-body" role="region" aria-label="文件用量统计">
             <table class="token-table">
-                <thead><tr><th>File</th><th>Prompt</th><th>Completion</th>{{if or $.Session.TokenUsage.TotalCacheReadTokens $.Session.TokenUsage.TotalCacheWriteTokens}}<th>Cache Read</th><th>Cache Write</th>{{end}}<th>Total</th></tr></thead>
+                <thead><tr><th>文件</th><th>输入</th><th>输出</th>{{if or $.Session.TokenUsage.TotalCacheReadTokens $.Session.TokenUsage.TotalCacheWriteTokens}}<th>缓存读取</th><th>缓存写入</th>{{end}}<th>合计</th></tr></thead>
                 <tbody>
                 {{range .}}
                     <tr>
-                        <td title="{{sessionTaskLabel .FilePath}}">{{sessionTaskLabel .FilePath | truncate 60}}</td>
+                        <td><span title="{{sessionTaskLabel .FilePath}}" data-copy-path="{{.FilePath}}">{{sessionTaskLabel .FilePath | truncate 60}}</span></td>
                         <td title="{{.PromptTokens}}">{{formatNumber .PromptTokens}}</td>
                         <td title="{{.CompletionTokens}}">{{formatNumber .CompletionTokens}}</td>
                         {{if or $.Session.TokenUsage.TotalCacheReadTokens $.Session.TokenUsage.TotalCacheWriteTokens}}<td title="{{.CacheReadTokens}}">{{formatNumber .CacheReadTokens}}</td><td title="{{.CacheWriteTokens}}">{{formatNumber .CacheWriteTokens}}</td>{{end}}
@@ -111,83 +115,84 @@
 
 {{if .Session.Comments}}
 <div class="comments-section">
-    <h3>Review Comments <span class="findings-count">({{len .Session.Comments}} findings)</span></h3>
+    <h2>审核问题 <span class="findings-count">（{{len .Session.Comments}} 条）</span></h2>
     <div class="comments-toolbar">
     <div class="toolbar-filters">
     {{with severityCounts .Session.Comments}}
-    <div class="comment-filter-bar" aria-label="Filter comments by severity">
-        <span class="comment-filter-label">Severity:</span>
-        <button type="button" class="comment-filter-chip filter-all is-active" data-filter-kind="severity" data-filter-value="all" aria-pressed="true">All ({{len $.Session.Comments}})</button>
-        {{if .Critical}}<button type="button" class="comment-filter-chip severity-critical" data-filter-kind="severity" data-filter-value="critical" aria-pressed="false">Critical ({{.Critical}})</button>{{end}}
-        {{if .High}}<button type="button" class="comment-filter-chip severity-high" data-filter-kind="severity" data-filter-value="high" aria-pressed="false">High ({{.High}})</button>{{end}}
-        {{if .Medium}}<button type="button" class="comment-filter-chip severity-medium" data-filter-kind="severity" data-filter-value="medium" aria-pressed="false">Medium ({{.Medium}})</button>{{end}}
-        {{if .Low}}<button type="button" class="comment-filter-chip severity-low" data-filter-kind="severity" data-filter-value="low" aria-pressed="false">Low ({{.Low}})</button>{{end}}
+    <div class="comment-filter-bar" aria-label="按严重程度筛选">
+        <span class="comment-filter-label">严重程度</span>
+        <button type="button" class="comment-filter-chip filter-all is-active" data-filter-kind="severity" data-filter-value="all" aria-pressed="true">全部 ({{len $.Session.Comments}})</button>
+        {{if .Critical}}<button type="button" class="comment-filter-chip severity-critical" data-filter-kind="severity" data-filter-value="critical" aria-pressed="false">严重 ({{.Critical}})</button>{{end}}
+        {{if .High}}<button type="button" class="comment-filter-chip severity-high" data-filter-kind="severity" data-filter-value="high" aria-pressed="false">高 ({{.High}})</button>{{end}}
+        {{if .Medium}}<button type="button" class="comment-filter-chip severity-medium" data-filter-kind="severity" data-filter-value="medium" aria-pressed="false">中 ({{.Medium}})</button>{{end}}
+        {{if .Low}}<button type="button" class="comment-filter-chip severity-low" data-filter-kind="severity" data-filter-value="low" aria-pressed="false">低 ({{.Low}})</button>{{end}}
     </div>
     {{end}}
     {{with categoryCounts .Session.Comments}}
-    <div class="comment-filter-bar" aria-label="Filter comments by category">
-        <span class="comment-filter-label">Category:</span>
-        <button type="button" class="comment-filter-chip filter-all is-active" data-filter-kind="category" data-filter-value="all" aria-pressed="true">All ({{len $.Session.Comments}})</button>
-        {{if .Bug}}<button type="button" class="comment-filter-chip cat-bug" data-filter-kind="category" data-filter-value="bug" aria-pressed="false">Bug ({{.Bug}})</button>{{end}}
-        {{if .Security}}<button type="button" class="comment-filter-chip cat-security" data-filter-kind="category" data-filter-value="security" aria-pressed="false">Security ({{.Security}})</button>{{end}}
-        {{if .Performance}}<button type="button" class="comment-filter-chip cat-performance" data-filter-kind="category" data-filter-value="performance" aria-pressed="false">Performance ({{.Performance}})</button>{{end}}
-        {{if .Maintainability}}<button type="button" class="comment-filter-chip cat-maintainability" data-filter-kind="category" data-filter-value="maintainability" aria-pressed="false">Maintainability ({{.Maintainability}})</button>{{end}}
-        {{if .Test}}<button type="button" class="comment-filter-chip cat-test" data-filter-kind="category" data-filter-value="test" aria-pressed="false">Test ({{.Test}})</button>{{end}}
-        {{if .Style}}<button type="button" class="comment-filter-chip cat-style" data-filter-kind="category" data-filter-value="style" aria-pressed="false">Style ({{.Style}})</button>{{end}}
-        {{if .Documentation}}<button type="button" class="comment-filter-chip cat-documentation" data-filter-kind="category" data-filter-value="documentation" aria-pressed="false">Documentation ({{.Documentation}})</button>{{end}}
-        {{if .Other}}<button type="button" class="comment-filter-chip cat-other" data-filter-kind="category" data-filter-value="other" aria-pressed="false">Other ({{.Other}})</button>{{end}}
+    <div class="comment-filter-bar" aria-label="按类型筛选">
+        <span class="comment-filter-label">问题类型</span>
+        <button type="button" class="comment-filter-chip filter-all is-active" data-filter-kind="category" data-filter-value="all" aria-pressed="true">全部 ({{len $.Session.Comments}})</button>
+        {{if .Bug}}<button type="button" class="comment-filter-chip cat-bug" data-filter-kind="category" data-filter-value="bug" aria-pressed="false">BUG ({{.Bug}})</button>{{end}}
+        {{if .Security}}<button type="button" class="comment-filter-chip cat-security" data-filter-kind="category" data-filter-value="security" aria-pressed="false">安全 ({{.Security}})</button>{{end}}
+        {{if .Performance}}<button type="button" class="comment-filter-chip cat-performance" data-filter-kind="category" data-filter-value="performance" aria-pressed="false">性能 ({{.Performance}})</button>{{end}}
+        {{if .Maintainability}}<button type="button" class="comment-filter-chip cat-maintainability" data-filter-kind="category" data-filter-value="maintainability" aria-pressed="false">可维护性 ({{.Maintainability}})</button>{{end}}
+        {{if .Test}}<button type="button" class="comment-filter-chip cat-test" data-filter-kind="category" data-filter-value="test" aria-pressed="false">测试 ({{.Test}})</button>{{end}}
+        {{if .Style}}<button type="button" class="comment-filter-chip cat-style" data-filter-kind="category" data-filter-value="style" aria-pressed="false">代码风格 ({{.Style}})</button>{{end}}
+        {{if .Documentation}}<button type="button" class="comment-filter-chip cat-documentation" data-filter-kind="category" data-filter-value="documentation" aria-pressed="false">文档 ({{.Documentation}})</button>{{end}}
+        {{if .Other}}<button type="button" class="comment-filter-chip cat-other" data-filter-kind="category" data-filter-value="other" aria-pressed="false">其他 ({{.Other}})</button>{{end}}
     </div>
     {{end}}
     </div>
     <div class="marks-row">
         <span class="comment-filter-label" data-marks-count aria-live="polite"></span>
         <div class="marks-actions">
-            <label class="marks-toggle"><input type="checkbox" data-hide-marked checked>Hide marked</label>
-            <button type="button" class="clear-marks-link" data-clear-all-marks>clear all marked</button>
+            <label class="marks-toggle"><input type="checkbox" data-hide-marked checked>隐藏已标记</label>
+            <button type="button" class="clear-marks-link" data-clear-all-marks>清除全部标记</button>
         </div>
     </div>
     </div>
+    <div class="finding-tools"><label>搜索问题<input type="search" data-comment-search placeholder="文件路径或问题描述"></label></div>
     <div class="comment-groups">
     {{range groupCommentsByFile .Session.Comments}}
     <details class="comment-file-group" open>
         <summary class="comment-file-header">
             <span class="chevron" aria-hidden="true">{{icon "chevron-right"}}</span>
-            <span class="file-path">{{.FilePath}}</span>
-            <span class="file-count-badge" data-comment-count>{{len .Comments}} comments</span>
+            <span class="file-path" title="{{.FilePath}}" data-copy-path="{{.FilePath}}">{{.FilePath}}</span>
+            <span class="file-count-badge" data-comment-count>{{len .Comments}} 条问题</span>
         </summary>
         <div class="comment-file-body">
         {{range .Comments}}
             {{$lines := numberedCodeLines .ExistingCode .StartLine .EndLine}}
             {{$numbered := and $lines (index $lines 0).Num}}
             <div class="comment-card" data-comment-card data-category="{{commentCategory .Category}}" data-severity="{{commentSeverity .Severity}}" data-mark-id="{{.MarkID}}">
-                <div class="comment-meta">
-                    {{if .Category}}<span class="comment-badge {{categoryClass .Category}}">{{.Category}}</span>{{end}}
-                    {{if .Severity}}<span class="comment-badge {{severityClass .Severity}}">{{.Severity}}</span>{{end}}
+                <div class="comment-meta">{{if .Reused}}<span class="comment-badge reused-badge">未变更文件 · 复用结果</span>{{end}}
+                    {{if .Category}}<span class="comment-badge {{categoryClass .Category}}">{{categoryLabel .Category}}</span>{{end}}
+                    {{if .Severity}}<span class="comment-badge {{severityClass .Severity}}">{{severityLabel .Severity}}</span>{{end}}
                     {{if .StartLine}}<span class="comment-lines{{if $numbered}} sr-only{{end}}">L{{.StartLine}}{{if and .EndLine (ne .EndLine .StartLine)}}-L{{.EndLine}}{{end}}</span>{{end}}
-                    <span class="comment-badge mark-chip" data-mark-chip hidden></span>
+                    <span class="comment-badge mark-chip" data-mark-chip title="问题唯一 ID">ID {{.ID}}</span>
                 </div>
                 <div class="comment-content">{{.Content}}</div>
                 {{if or .ExistingCode .SuggestionCode}}
                 <div class="comment-code-diff">
                     {{if .ExistingCode}}
                     <div class="code-panel code-existing">
-                        <div class="code-panel-label">Existing Code</div>
+                        <div class="code-panel-label">现有代码</div>
                         {{if $numbered}}<pre class="code-numbered"><code>{{range $i, $l := $lines}}{{if $i}}
 {{end}}<span class="code-line"><span class="line-no" aria-hidden="true">{{$l.Num}}</span><span class="line-text">{{$l.Text}}</span></span>{{end}}</code></pre>{{else}}<pre><code>{{.ExistingCode}}</code></pre>{{end}}
                     </div>
                     {{end}}
                     {{if .SuggestionCode}}
                     <div class="code-panel code-suggestion">
-                        <div class="code-panel-label">Suggested Change</div>
+                        <div class="code-panel-label">建议修改</div>
                         <pre{{if $numbered}} class="code-gutter-offset"{{end}}><code>{{.SuggestionCode}}</code></pre>
                     </div>
                     {{end}}
                 </div>
                 {{end}}
                 <div class="comment-actions">
-                    <button type="button" class="mark-btn" data-set-mark="fixed">Fixed</button>
-                    <button type="button" class="mark-btn" data-set-mark="ignored">Ignored</button>
-                    <button type="button" class="mark-btn mark-clear" data-set-mark="">Clear</button>
+                    <button type="button" class="mark-btn" data-set-mark="fixed">已修复</button>
+                    <button type="button" class="mark-btn" data-set-mark="ignored">已忽略</button>
+                    <button type="button" class="mark-btn mark-clear" data-set-mark="">清除标记</button>
                 </div>
             </div>
         {{end}}
@@ -195,7 +200,8 @@
     </details>
     {{end}}
     </div>
-    <p class="comment-filter-empty" data-comment-filter-empty role="status" hidden>No comments match this filter.</p>
+    {{template "pager" (dict "prefix" "findings" "label" "问题分页")}}
+    <p class="comment-filter-empty" data-comment-filter-empty role="status" hidden>没有符合筛选条件的问题。</p>
 </div>
 {{end}}
 
@@ -203,13 +209,13 @@
 <details class="file-accordion section-accordion">
     <summary class="file-accordion-header">
         <span class="chevron" aria-hidden="true">{{icon "chevron-right"}}</span>
-        <span class="section-title">Files Reviewed</span>
-        <span class="file-count-badge">{{countLabel (len .Session.Summary.FilesReviewed) "file" "files"}}</span>
+        <span class="section-title">审核文件</span>
+        <span class="file-count-badge">{{countLabel (len .Session.Summary.FilesReviewed) "个文件" "个文件"}}</span>
     </summary>
     <div class="file-accordion-body">
         <ul class="file-list">
         {{range .Session.Summary.FilesReviewed}}
-            <li><span class="file-list-icon" aria-hidden="true">{{icon "file"}}</span><span>{{.}}</span></li>
+            <li><span class="file-list-icon" aria-hidden="true">{{icon "file"}}</span><span title="{{.}}" data-copy-path="{{.}}">{{.}}</span></li>
         {{end}}
         </ul>
     </div>
@@ -220,8 +226,8 @@
 <details class="file-accordion section-accordion" open>
     <summary class="file-accordion-header">
         <span class="chevron" aria-hidden="true">{{icon "chevron-right"}}</span>
-        <span class="section-title">Session Tasks</span>
-        <span class="file-count-badge">{{countLabel (len .Session.SessionTasks) "task" "tasks"}}</span>
+        <span class="section-title">会话任务</span>
+        <span class="file-count-badge">{{countLabel (len .Session.SessionTasks) "项任务" "项任务"}}</span>
     </summary>
     <div class="file-accordion-body">
         <div class="conversations">
@@ -237,8 +243,8 @@
 <details class="file-accordion section-accordion">
     <summary class="file-accordion-header">
         <span class="chevron" aria-hidden="true">{{icon "chevron-right"}}</span>
-        <span class="section-title">Conversations</span>
-        <span class="file-count-badge">{{countLabel (len .Session.Files) "file" "files"}}</span>
+        <span class="section-title">审核过程</span>
+        <span class="file-count-badge">{{countLabel (len .Session.Files) "个文件" "个文件"}}</span>
     </summary>
     <div class="file-accordion-body">
         <div class="conversations">
@@ -250,7 +256,7 @@
 </details>
 {{end}}
 
-{{if $.Static}}<script>{{$.InlineJS}}</script>{{else}}<script src="/static/a11y.js"></script><script src="/static/session.js"></script>{{end}}
+{{if $.Static}}<script>{{$.InlineJS}}</script>{{else}}<script src="/static/a11y.js"></script><script src="/static/pager.js"></script><script src="/static/session.js"></script><script src="/static/actions.js"></script>{{end}}
 </main>
 </body>
 </html>
@@ -259,37 +265,37 @@
 
 {{/* Terminal-state rendering for the meta bar: classed by outcome, unclassed
      for unrecognized states. Invoked with .Session.Summary as dot. */}}
-{{define "meta-status"}}{{if .Aborted}}<span class="meta-status status-aborted">aborted</span>{{else if .Legacy}}<span class="meta-status status-legacy">legacy</span>{{else if eq .TerminalState "complete"}}<span class="meta-status status-complete">complete</span>{{else if eq .TerminalState "partial"}}<span class="meta-status status-partial">partial</span>{{else if eq .TerminalState "failed"}}<span class="meta-status status-failed">failed</span>{{else if eq .TerminalState "skipped"}}<span class="meta-status status-legacy">skipped</span>{{else}}<span class="meta-status">{{.TerminalState}}</span>{{end}}{{end}}
+{{define "meta-status"}}{{if .Aborted}}<span class="meta-status status-aborted">已中止</span>{{else if .Legacy}}<span class="meta-status status-legacy">旧版会话</span>{{else if eq .TerminalState "complete"}}<span class="meta-status status-complete">已完成</span>{{else if eq .TerminalState "partial"}}<span class="meta-status status-partial">部分完成</span>{{else if eq .TerminalState "failed"}}<span class="meta-status status-failed">失败</span>{{else if eq .TerminalState "skipped"}}<span class="meta-status status-legacy">已跳过</span>{{else}}<span class="meta-status">{{statusLabel .TerminalState}}</span>{{end}}{{end}}
 
 {{define "task-cards"}}
 <details class="file-accordion">
     <summary class="file-accordion-header">
         <span class="chevron" aria-hidden="true">{{icon "chevron-right"}}</span>
-        <span class="file-path">{{sessionTaskLabel .FilePath}}</span>
-        <span class="file-count-badge">{{countLabel (cardCount .Tasks) "request" "requests"}}</span>
+        <span class="file-path" title="{{.FilePath}}" data-copy-path="{{.FilePath}}">{{sessionTaskLabel .FilePath}}</span>
+        <span class="file-count-badge">{{countLabel (cardCount .Tasks) "次请求" "次请求"}}</span>
     </summary>
     <div class="file-accordion-body">
         {{range $tg := orderedTasks .Tasks}}
         <div class="task-group {{taskTypeClass $tg.Type}}">
             <h4 class="task-type-label">
                 <span class="task-type-dot"></span>
-                {{$tg.Type}}
+                {{taskLabel $tg.Type}}
             </h4>
             {{range $tg.Cards}}
             {{$card := .}}
             <div class="card">
                 <div class="card-header">
-                    <span class="request-label">Request #{{.RequestNo}}</span>
+                    <span class="request-label">请求 #{{.RequestNo}}</span>
                     {{if .Model}}<span class="badge badge-model">{{.Model}}</span>{{end}}
                     {{if or .PromptTokens .CompletionTokens}}<span class="badge badge-tokens">P:<span title="{{.PromptTokens}}">{{formatNumber .PromptTokens}}</span> C:<span title="{{.CompletionTokens}}">{{formatNumber .CompletionTokens}}</span>{{if or .CacheReadTokens .CacheWriteTokens}} CR:<span title="{{.CacheReadTokens}}">{{formatNumber .CacheReadTokens}}</span> CW:<span title="{{.CacheWriteTokens}}">{{formatNumber .CacheWriteTokens}}</span>{{end}}</span>{{end}}
                     {{if .DurationMs}}<span class="badge badge-duration">{{.DurationMs}}ms</span>{{end}}
-                    {{if .Error}}<span class="badge badge-error">Error</span>{{end}}
+                    {{if .Error}}<span class="badge badge-error">错误</span>{{end}}
                 </div>
                 {{if .Error}}
                 <details class="error-detail">
                     <summary class="error-detail-toggle">
                         <span class="chevron-sm" aria-hidden="true">{{icon "chevron-right"}}</span>
-                        <span>Error Detail</span>
+                        <span>错误详情</span>
                     </summary>
                     <div class="error-detail-body">
                         <pre class="error-content">{{.Error}}</pre>
@@ -300,7 +306,7 @@
                 <details class="tool-detail">
                     <summary class="tool-detail-toggle">
                         <span class="chevron-sm" aria-hidden="true">{{icon "chevron-right"}}</span>
-                        <span>Reasoning</span>
+                        <span>推理过程</span>
                     </summary>
                     <div class="tool-detail-body">
                         <div class="response-text">{{.}}</div>
@@ -315,7 +321,7 @@
                             <span class="grouping-label">{{.Label}}</span>
                             <ul class="grouping-files">
                                 {{range .Files}}
-                                {{if .Resolved}}<li>{{.Path}}</li>{{else}}<li class="grouping-unresolved">#{{.Index}}</li>{{end}}
+                                {{if .Resolved}}<li title="{{.Path}}" data-copy-path="{{.Path}}">{{.Path}}</li>{{else}}<li class="grouping-unresolved">#{{.Index}}</li>{{end}}
                                 {{end}}
                             </ul>
                         </div>
@@ -325,7 +331,7 @@
                     <details class="tool-detail">
                         <summary class="tool-detail-toggle">
                             <span class="chevron-sm" aria-hidden="true">{{icon "chevron-right"}}</span>
-                            <span>Raw LLM response</span>
+                            <span>模型原始响应</span>
                         </summary>
                         <div class="tool-detail-body">
                             <div class="response-text">{{.}}</div>
@@ -340,27 +346,27 @@
                 {{end}}
                 {{if .ToolCalls}}
                 <div class="tool-calls-section">
-                    <div class="tool-calls-label"><span class="tool-calls-icon" aria-hidden="true">{{icon "settings"}}</span>Tool Calls ({{len .ToolCalls}})</div>
+                    <div class="tool-calls-label"><span class="tool-calls-icon" aria-hidden="true">{{icon "settings"}}</span>工具调用 ({{len .ToolCalls}})</div>
                     {{range .ToolCalls}}
                     <div class="tool-call-item {{if not .Ok}}tool-call-error{{end}}">
                         <div class="tool-call-header">
                             <strong class="tool-name">{{.Name}}</strong>
                             {{if .DurationMs}}<span class="badge badge-duration">{{.DurationMs}}ms</span>{{end}}
-                            {{if not .Ok}}<span class="badge badge-error">Failed</span>{{end}}
+                            {{if not .Ok}}<span class="badge badge-error">失败</span>{{end}}
                         </div>
                         <details class="tool-detail">
                             <summary class="tool-detail-toggle">
                                 <span class="chevron-sm" aria-hidden="true">{{icon "chevron-right"}}</span>
-                                <span>Show Details</span>
+                                <span>查看详情</span>
                             </summary>
                             <div class="tool-detail-body">
                                 <div class="tool-section">
-                                    <div class="tool-section-label">Arguments</div>
+                                    <div class="tool-section-label">参数</div>
                                     <pre>{{.Arguments}}</pre>
                                 </div>
                                 {{if .Result}}
                                 <div class="tool-section">
-                                    <div class="tool-section-label">Result</div>
+                                    <div class="tool-section-label">结果</div>
                                     <pre>{{.Result}}</pre>
                                 </div>
                                 {{end}}

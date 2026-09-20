@@ -1,52 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Repositories - Open Code Review Viewer</title>
-
-    <link rel="stylesheet" href="/static/style.css">
+    <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码仓库 - Open Code Review</title><link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
-{{template "app-header" .}}
+<body>{{template "app-header" .}}
 <main class="repos-page">
-<div class="page-heading">
-    <h2>Repositories</h2>
+    <div class="page-heading page-heading-with-tools"><div><p class="eyebrow">审核工作台</p><h1>代码仓库</h1><p class="page-subtitle">选择仓库查看审核会话、问题明细和历史对比。</p></div>{{if .Repos}}<div class="repository-search"><label class="sr-only" for="repository-search-input">搜索仓库</label><div class="search-field"><input id="repository-search-input" type="search" placeholder="搜索仓库名称" autocomplete="off"><span class="search-icon" aria-hidden="true">{{icon "search"}}</span></div></div>{{end}}</div>
     {{if .Repos}}
-    <div class="repository-search">
-        <label class="sr-only" for="repository-search-input">Search repositories</label>
-        <div class="search-field">
-            <input id="repository-search-input" type="search" placeholder="Search repositories..." autocomplete="off">
-            <span class="search-icon" aria-hidden="true">{{icon "search"}}</span>
-        </div>
-    </div>
-    {{end}}
-</div>
-{{if .Repos}}
-<div class="table-scroll" role="region" aria-label="Repositories table">
-<table id="repositories-table" class="table">
-    <thead><tr><th scope="col" class="col-repository">Repository</th><th scope="col" class="col-sessions">Sessions</th><th scope="col" class="col-modified">Last Modified</th><th scope="col" class="col-action">Action</th></tr></thead>
-    <tbody>
-    {{range .Repos}}
-        <tr>
-            <td class="col-repository" data-repository-name><a href="/r/{{.EncodedPath}}">{{.EncodedPath}}</a></td>
-            <td class="col-sessions">{{.SessionCount}}</td>
-            <td class="col-modified">{{formatTime .LastModified}}</td>
-            <td class="col-action"><a class="repo-check" href="/r/{{.EncodedPath}}">Check</a></td>
-        </tr>
-    {{end}}
-    </tbody>
-</table>
-</div>
-{{template "pager" (dict "prefix" "repos" "label" "Repository pages")}}
-<script src="/static/pager.js"></script>
-<script src="/static/a11y.js"></script>
-<script src="/static/repos.js"></script>
-{{else}}
-<p>No session data found. Run a code review first.</p>
-{{end}}
-</main>
-</body>
-</html>
-
+    <div class="list-toolbar"><span class="list-count">共 {{len .Repos}} 个仓库</span><span class="toolbar-hint">数据按最近修改时间排序</span></div>
+    <div class="table-scroll" role="region" aria-label="仓库列表"><table id="repositories-table" class="table"><thead><tr><th class="col-repository">仓库</th><th class="col-sessions">会话数</th><th class="col-modified">最近修改</th><th class="col-action">操作</th></tr></thead><tbody>
+    {{range .Repos}}<tr><td class="col-repository" data-repository-name><a href="/r/{{.EncodedPath}}" title="{{.EncodedPath}}">{{.EncodedPath}}</a></td><td class="col-sessions">{{.SessionCount}}</td><td class="col-modified">{{formatTime .LastModified}}</td><td class="col-action"><a class="button button-primary button-small" href="/r/{{.EncodedPath}}">查看会话</a></td></tr>{{end}}
+    </tbody></table></div>
+    {{template "pager" (dict "prefix" "repos" "label" "仓库分页")}}
+    <script src="/static/pager.js"></script><script src="/static/a11y.js"></script><script src="/static/repos.js"></script>
+    {{else}}<div class="empty-state"><div class="empty-state-icon">⌁</div><h3>还没有审核数据</h3><p>完成一次代码审核后，会话会自动出现在这里。</p></div>{{end}}
+</main></body></html>
 {{define "breadcrumbs"}}{{end}}

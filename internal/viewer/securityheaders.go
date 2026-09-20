@@ -18,7 +18,7 @@ const contentSecurityPolicy = "default-src 'self'; " +
 	"object-src 'none'; " +
 	"base-uri 'none'; " +
 	"frame-ancestors 'none'; " +
-	"form-action 'none'"
+	"form-action 'self'"
 
 // securityHeaders wraps a handler and sets defense-in-depth response headers on
 // every reply. These harden the local viewer's browser-facing surface (the
