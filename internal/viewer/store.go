@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 alibaba/open-code-review Contributors
 
-// Package viewer provides a read-only WebUI for browsing session records
+// Package viewer provides a WebUI for browsing session records
 // produced by open-code-review runs. It scans JSONL files under
 // $HOME/.opencodereview/sessions/, parses them, and exposes structured data.
 package viewer
@@ -109,6 +109,15 @@ type SessionSummary struct {
 	FailedCount    int
 	WaivedCount    int
 	RunManifest    *session.RunManifest
+}
+
+func (s SessionSummary) ProgressPercent() int {
+	total := s.SelectedCount
+	if total == 0 { total = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount }
+	if total == 0 { return 0 }
+	done := s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+	if done > total { done = total }
+	return done * 100 / total
 }
 
 // ListSessions returns lightweight summaries for all sessions in a repo subdir.
@@ -252,6 +261,8 @@ type ReviewComment struct {
 	Category       string // bug, security, performance, maintainability, test, style, documentation, other
 	Severity       string // critical, high, medium, low
 	MarkID         string `json:"-"`
+	ID             string `json:"-"`
+	Reused         bool   `json:"-"`
 }
 
 // ViewSession holds fully parsed records for one session.
@@ -689,7 +700,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 					if !ok {
 						continue
 					}
-					rc := &ReviewComment{FilePath: fp}
+					rc := &ReviewComment{FilePath: fp, Reused: typ == "review_item_reused"}
 					if v, ok := cm["path"].(string); ok && v != "" {
 						rc.FilePath = v
 					}
@@ -715,6 +726,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 						rc.Severity = v
 					}
 					rc.MarkID = commentMarkID(recUUID, ci, rc, markOccurrences)
+					rc.ID = strconv.Itoa(len(vs.Comments) + 1)
 					vs.Comments = append(vs.Comments, rc)
 				}
 			}
