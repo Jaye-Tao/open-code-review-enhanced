@@ -245,20 +245,14 @@ func TestRenderTemplate_SessionsTableMockup(t *testing.T) {
 	})
 	body := rr.Body.String()
 
-	// Every th carries scope="col": the session cell no longer repeats the word
-	// "Session", so the header is what tells a screen reader what the column holds.
-	const header = `<thead><tr><th scope="col">Session ID</th><th scope="col">Branch</th><th scope="col">Mode</th><th scope="col">Model</th>` +
-		`<th scope="col">Files</th><th scope="col">Status</th><th scope="col">Comments</th><th scope="col">Duration</th><th scope="col">Started At</th><th scope="col" class="col-action">Action</th></tr></thead>`
+	const header = `<thead><tr><th>Session ID</th><th>Branch</th><th>Mode</th><th>Model</th>` +
+		`<th>文件</th><th>状态</th><th>问题</th><th>耗时</th><th>开始时间</th><th class="col-action">操作</th></tr></thead>`
 	for _, want := range []string{
 		header,
 		`id="sessions-table"`,
 		`<div class="table-scroll" role="region" aria-label="Sessions table">`,
 		`<a class="back-link" href="/" aria-label="Back to repositories"><svg`,
-		// Session ids are random v4 UUIDs, so the first segment already separates
-		// any two of them; the remaining 27 characters cost a wide column and buy
-		// no distinguishing power. The full value stays in title= and in the href,
-		// so hovering and linking are unaffected.
-		`<td class="col-session"><a class="session-id" href="/r/my-repo/` + fullID + `" title="` + fullID + `">b029c726…</a></td>`,
+		`<td class="col-session"><a class="session-id" href="/r/my-repo/` + fullID + `" title="` + fullID + `">Session: b029c726-7b6b-46aa-b923-9fea9f…</a></td>`,
 		`<td class="col-branch">refactor/rename-runprofile</td>`,
 		`<td class="col-mode">range</td>`,
 		`<td class="col-model">claude-opus-5</td>`,
@@ -266,7 +260,7 @@ func TestRenderTemplate_SessionsTableMockup(t *testing.T) {
 		`<td>complete</td>`,
 		`<td class="col-comments">5</td>`,
 		`<td class="col-duration">4m50s</td>`,
-		`<a href="/r/my-repo/compare?before=older-session&amp;after=` + fullID + `">Compare</a>`,
+		`<a href="/r/my-repo/compare?before=older-session&amp;after=` + fullID + `">对比</a>`,
 		`id="sessions-pagination"`,
 		`data-page-step="-1"`,
 		`data-page-step="1"`,
@@ -525,7 +519,7 @@ func TestRenderTemplate_SessionHeaderMockup(t *testing.T) {
 	for _, required := range []string{
 		`<main class="session-page">`,
 		`aria-label="Back to sessions"><svg`,
-		`<span class="meta-truncate" title="/Users/kite/Documents/code/github/open-code-review">`,
+		`<span class="meta-truncate" title="/Users/kite/Documents/code/github/open-code-review" data-copy-path="/Users/kite/Documents/code/github/open-code-review">`,
 		`<span class="meta-truncate" title="refactor/rename-runprofile">`,
 		`<strong>From:</strong> <code>05af664</code>`,
 		`<strong>To:</strong> <code>HEAD</code>`,
@@ -870,8 +864,8 @@ func TestRenderTemplate_ReposTableMockup(t *testing.T) {
 	for _, required := range []string{
 		`<main class="repos-page">`,
 		`<div class="table-scroll" role="region" aria-label="Repositories table">`,
-		`<th scope="col" class="col-action">Action</th>`,
-		`<a class="repo-check" href="/r/my-project">Check</a>`,
+		`<th scope="col" class="col-action">操作</th>`,
+		`<a class="repo-check" href="/r/my-project">查看会话</a>`,
 		`<td class="col-repository" data-repository-name><a href="/r/my-project">my-project</a></td>`,
 		`aria-label="Previous page"><svg`,
 		`aria-label="Next page"><svg`,
