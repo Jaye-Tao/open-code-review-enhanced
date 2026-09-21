@@ -265,7 +265,7 @@
 
 {{/* Terminal-state rendering for the meta bar: classed by outcome, unclassed
      for unrecognized states. Invoked with .Session.Summary as dot. */}}
-{{define "meta-status"}}{{if .Aborted}}<span class="meta-status status-aborted">已中止</span>{{else if .Legacy}}<span class="meta-status status-legacy">旧版会话</span>{{else if eq .TerminalState "complete"}}<span class="meta-status status-complete">已完成</span>{{else if eq .TerminalState "partial"}}<span class="meta-status status-partial">部分完成</span>{{else if eq .TerminalState "failed"}}<span class="meta-status status-failed">失败</span>{{else if eq .TerminalState "skipped"}}<span class="meta-status status-legacy">已跳过</span>{{else}}<span class="meta-status">{{statusLabel .TerminalState}}</span>{{end}}{{end}}
+{{define "meta-status"}}{{if eq .TerminalState "aborted"}}<span class="meta-status status-aborted">已中止</span>{{else if .Aborted}}<span class="meta-status status-partial">审核中</span>{{else if .Legacy}}<span class="meta-status status-legacy">旧版会话</span>{{else if eq .TerminalState "complete"}}<span class="meta-status status-complete">已完成</span>{{else if eq .TerminalState "partial"}}<span class="meta-status status-partial">部分完成</span>{{else if eq .TerminalState "failed"}}<span class="meta-status status-failed">失败</span>{{else if eq .TerminalState "skipped"}}<span class="meta-status status-legacy">已跳过</span>{{else}}<span class="meta-status">{{statusLabel .TerminalState}}</span>{{end}}{{end}}
 
 {{define "task-cards"}}
 <details class="file-accordion">
