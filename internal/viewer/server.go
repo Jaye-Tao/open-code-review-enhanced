@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-//go:embed templates/*.html static/style.css static/pager.js static/a11y.js static/session.js static/repos.js static/sessions.js static/actions.js static/compare.js static/icons/*.svg
+//go:embed templates/*.html static/style.css static/pager.js static/a11y.js static/session.js static/repos.js static/sessions.js static/actions.js static/compare.js static/language.js static/icons/*.svg
 var assets embed.FS
 
 // iconNameRE guards the icon() template helper: names are hard-coded in
