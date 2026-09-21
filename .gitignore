@@ -28,6 +28,7 @@ bin/ocr
 bin/opencodereview
 
 /opencodereview
+/release-assets/
 
 /node_modules
 
