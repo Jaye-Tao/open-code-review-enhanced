@@ -2042,3 +2042,4 @@ h1 { margin: 0; font-size: clamp(1.35rem, 2vw, 1.8rem); letter-spacing: -.02em; 
 .progress-cell strong,.progress-cell small { display:block; white-space:nowrap; } .progress-cell small { color:var(--text-muted); font-size:.7rem; margin-top:.2rem; } .compare-page-actions { display:flex; gap:.5rem; flex-wrap:wrap; }
 
 .reused-badge { color: var(--link); background: var(--accent-soft); }
+.export-form { display:inline-flex; align-items:center; gap:.35rem; } .export-form select { min-height:28px; padding:.25rem .4rem; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); font:inherit; font-size:.76rem; }

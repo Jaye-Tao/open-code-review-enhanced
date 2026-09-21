@@ -151,6 +151,7 @@ func newMux(root string) *http.ServeMux {
 
 	for pattern, handler := range map[string]func(http.ResponseWriter, *http.Request, string, string, string){
 		"GET /r/{repo}/{sessionID}/export.md": handleMarkdown,
+		"GET /r/{repo}/{sessionID}/export": func(w http.ResponseWriter, r *http.Request, root, repo, id string) { handleSessionExport(w, r, root, repo, id, r.URL.Query().Get("format")) },
 		"DELETE /r/{repo}/{sessionID}/delete": handleDeleteSession,
 	} {
 		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {

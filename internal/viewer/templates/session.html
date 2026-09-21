@@ -16,7 +16,7 @@
         <h1>审核会话 <code>{{truncate 18 .Session.Summary.SessionID}}</code></h1>
     </div>
     {{if not $.Static}}<div class="session-actions">
-        <a class="button button-secondary" href="/r/{{.EncodedRepo}}/{{.Session.Summary.SessionID}}/export.md" download>导出 Markdown</a>
+        <form class="export-form" action="/r/{{.EncodedRepo}}/{{.Session.Summary.SessionID}}/export" method="get"><select name="format" aria-label="选择导出格式"><option value="html">HTML</option><option value="md">Markdown</option><option value="json">JSON</option><option value="sarif">SARIF</option></select><button class="button button-secondary" type="submit">导出</button></form>
         <button class="button button-danger" type="button" data-delete-session="/r/{{.EncodedRepo}}/{{.Session.Summary.SessionID}}/delete" data-session-id="{{.Session.Summary.SessionID}}" data-return-url="/r/{{.EncodedRepo}}">删除会话</button>
     </div>{{end}}
     <div class="meta">
