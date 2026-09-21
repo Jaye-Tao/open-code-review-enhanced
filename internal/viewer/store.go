@@ -86,18 +86,22 @@ func DiscoverRepos(root string) ([]RepoInfo, error) {
 
 // SessionSummary is built from session_start and session_end records.
 type SessionSummary struct {
-	SessionID      string
-	Timestamp      time.Time
-	CWD            string
-	GitBranch      string
-	Model          string
-	ReviewMode     string
-	DiffFrom       string
-	DiffTo         string
-	DiffCommit     string
-	FilesReviewed  []string
-	DurationSec    float64
-	FileCount      int
+	SessionID     string
+	Timestamp     time.Time
+	CWD           string
+	GitBranch     string
+	Model         string
+	ReviewMode    string
+	DiffFrom      string
+	DiffTo        string
+	DiffCommit    string
+	FilesReviewed []string
+	DurationSec   float64
+	FileCount     int
+	// FilesReadCount is the number of file-level review records observed while
+	// loading the session. It is kept separate from findings because a clean
+	// file still contributes to review progress.
+	FilesReadCount int
 	LLMFailures    int
 	CommentCount   int
 	Aborted        bool
@@ -112,11 +116,23 @@ type SessionSummary struct {
 }
 
 func (s SessionSummary) ProgressPercent() int {
-	total := s.SelectedCount
-	if total == 0 { total = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount }
-	if total == 0 { return 0 }
-	done := s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
-	if done > total { done = total }
+	total := s.FileCount
+	if total == 0 {
+		total = s.SelectedCount
+	}
+	if total == 0 {
+		total = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+	}
+	if total == 0 {
+		return 0
+	}
+	done := s.FilesReadCount
+	if done == 0 {
+		done = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+	}
+	if done > total {
+		done = total
+	}
 	return done * 100 / total
 }
 
@@ -168,6 +184,7 @@ func peekSession(path string) (SessionSummary, error) {
 
 	summary := SessionSummary{Aborted: true}
 	var lastLine []byte
+	readFiles := make(map[string]struct{})
 	readErr := readJSONLLines(f, func(line []byte) {
 		lastLine = append([]byte(nil), line...)
 
@@ -204,9 +221,15 @@ func peekSession(path string) (SessionSummary, error) {
 		}
 
 		// Count comments from review_item_done/reused records
-		if len(line) > 0 && (bytes.Contains(line, []byte(`"review_item_done"`)) || bytes.Contains(line, []byte(`"review_item_reused"`))) {
+		if len(line) > 0 && (bytes.Contains(line, []byte(`"review_item_done"`)) || bytes.Contains(line, []byte(`"review_item_reused"`)) || bytes.Contains(line, []byte(`"review_item_failed"`))) {
 			var rec map[string]any
 			if err := json.Unmarshal(line, &rec); err == nil {
+				if path, ok := rec["filePath"].(string); ok && path != "" {
+					if _, seen := readFiles[path]; !seen {
+						readFiles[path] = struct{}{}
+						summary.FilesReadCount++
+					}
+				}
 				if comments, ok := rec["comments"].([]any); ok {
 					summary.CommentCount += len(comments)
 				}
@@ -221,6 +244,9 @@ func peekSession(path string) (SessionSummary, error) {
 				applySessionEnd(&summary, rec)
 			}
 		}
+	}
+	if summary.RunManifest == nil && summary.FileCount < summary.FilesReadCount {
+		summary.FileCount = summary.FilesReadCount
 	}
 	return summary, readErr
 }
