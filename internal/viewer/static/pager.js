@@ -74,7 +74,7 @@
                 button.type = "button";
                 button.className = "page-number";
                 button.textContent = String(item);
-                button.setAttribute("aria-label", `第 ${item} 页`);
+                button.setAttribute("aria-label", document.documentElement.lang === 'en' ? `Page ${item}` : `第 ${item} 页`);
                 if (item === current) {
                     button.setAttribute("aria-current", "page");
                 }
@@ -98,7 +98,7 @@
 
             pager.hidden = false;
             const summary = pager.querySelector("[data-pagination-summary]");
-            if (summary) summary.textContent = `${filtered.length} 条记录 · 第 ${current}/${total} 页`;
+            if (summary) summary.textContent = ocrFormatPage(current, total, filtered.length);
             if (onRender) onRender(filtered);
         };
 
