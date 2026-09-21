@@ -2048,3 +2048,4 @@ h1 { margin: 0; font-size: clamp(1.35rem, 2vw, 1.8rem); letter-spacing: -.02em; 
 @media (max-width: 850px) { .compare-launcher { grid-template-columns: 1fr; align-items: stretch; gap: 1rem; } .compare-form { width: 100%; } .compare-form select { width: 100%; } }
 
 .export-form { display:inline-flex; align-items:center; gap:.35rem; } .export-form select { min-height:28px; padding:.25rem .4rem; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); font:inherit; font-size:.76rem; }
+.language-switch { margin-left:auto; display:inline-flex; align-items:center; } .language-switch select { min-height:30px; padding:.25rem .45rem; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-sm); font:inherit; font-size:.76rem; }
