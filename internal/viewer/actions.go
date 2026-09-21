@@ -43,6 +43,24 @@ func handleDeleteSession(w http.ResponseWriter, r *http.Request, root, repo, id 
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func handleDeleteRepository(w http.ResponseWriter, r *http.Request, root, repo string) {
+	if !sameOriginDelete(r) { http.Error(w, "same-origin deletion confirmation required", http.StatusForbidden); return }
+	dir, err := os.OpenRoot(root)
+	if err != nil { http.Error(w, "sessions unavailable", http.StatusInternalServerError); return }
+	defer dir.Close()
+	if err := dir.RemoveAll(repo); err != nil {
+		if os.IsNotExist(err) { http.Error(w, "repository not found", http.StatusNotFound); return }
+		http.Error(w, "could not delete repository", http.StatusInternalServerError); return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func sameOriginDelete(r *http.Request) bool {
+	origin, err := url.Parse(r.Header.Get("Origin"))
+	scheme := "http"; if r.TLS != nil { scheme = "https" }
+	return err == nil && origin.Scheme == scheme && origin.Host == r.Host && origin.User == nil && origin.Path == "" && r.Header.Get("X-OCR-Confirm") == "delete"
+}
+
 func handleMarkdown(w http.ResponseWriter, r *http.Request, root, repo, id string) {
 	var out bytes.Buffer
 	if err := ExportSessionMarkdown(&out, root, repo, id); err != nil {
