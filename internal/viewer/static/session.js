@@ -113,8 +113,8 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         if (emptyState) {
             emptyState.hidden = visibleCount !== 0;
             const emptyText = visibleCount === 0 && hiddenByMarks > 0
-                ? '符合条件的问题已被标记隐藏，可关闭“隐藏已标记”查看。'
-                : '没有符合筛选条件的问题。';
+                ? ocrT('符合条件的问题已被标记隐藏，可关闭“隐藏已标记”查看。')
+                : ocrT('没有符合筛选条件的问题。');
             // Both live regions below announce on textContent changes, so
             // write only when the sentence actually changed — every filter
             // click runs this code and re-announcing the same sentence is
@@ -125,8 +125,10 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         }
 
         if (marksCount) {
-            const marksText = '已标记 ' + markedCount + ' 条 · 已隐藏 ' + hiddenByMarks + ' 条' +
-                (marksSaveFailed ? ' · 浏览器存储不可用，标记尚未保存' : '');
+            const marksText = (document.documentElement.lang === 'en'
+                ? `Marked ${markedCount} · Hidden ${hiddenByMarks}`
+                : '已标记 ' + markedCount + ' 条 · 已隐藏 ' + hiddenByMarks + ' 条') +
+                (marksSaveFailed ? ' · ' + ocrT('浏览器存储不可用，标记尚未保存') : '');
             if (marksCount.textContent !== marksText) {
                 marksCount.textContent = marksText;
             }
@@ -143,7 +145,7 @@ document.querySelectorAll('.response-text').forEach(function(el) {
                 const cards = [...group.querySelectorAll('[data-comment-card]')];
                 const count = cards.filter(card => !card.hidden).length;
                 group.hidden = count === 0;
-                group.querySelector('[data-comment-count]').textContent = count + ' 条问题';
+                group.querySelector('[data-comment-count]').textContent = document.documentElement.lang === 'en' ? `${count} findings` : count + ' 条问题';
             });
         }
     });
@@ -237,7 +239,7 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         if (knownMarkStates.indexOf(state) !== -1) {
             card.dataset.mark = state;
             if (chip) {
-                chip.textContent = state === 'fixed' ? '已修复' : '已忽略';
+                chip.textContent = ocrT(state === 'fixed' ? '已修复' : '已忽略');
                 chip.className = 'comment-badge mark-chip mark-' + state;
                 chip.hidden = false;
             }

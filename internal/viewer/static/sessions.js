@@ -15,7 +15,7 @@
     const form = document.querySelector('.compare-form');
     if (form) form.addEventListener('submit', event => {
         const before = form.elements.before, after = form.elements.after;
-        after.setCustomValidity(before.value === after.value ? '请选择两个不同的会话' : '');
+        after.setCustomValidity(before.value === after.value ? ocrT('请选择两个不同的会话') : '');
         if (!form.reportValidity()) event.preventDefault();
     });
     if (form) form.addEventListener('change', () => form.elements.after.setCustomValidity(''));
