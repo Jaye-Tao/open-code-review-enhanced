@@ -376,7 +376,7 @@ func TestRenderTemplate_SessionsCompareLink(t *testing.T) {
 			renderTemplate(rr, "sessions.html", sessionsData{
 				EncodedRepo: "myrepo",
 				RepoName:    "MyProject",
-				审核会话    tt.sessions,
+				Sessions:    tt.sessions,
 			})
 			if rr.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", rr.Code)
