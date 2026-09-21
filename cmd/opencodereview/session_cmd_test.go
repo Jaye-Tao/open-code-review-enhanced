@@ -929,3 +929,27 @@ func TestRunSessionExport_Errors(t *testing.T) {
 		})
 	}
 }
+
+func TestRunSessionExport_Markdown(t *testing.T) {
+	setTestHome(t, t.TempDir())
+	repoDir := t.TempDir()
+	sh := session.New(repoDir, "main", "test-model", session.SessionOptions{ReviewMode: session.ReviewModeCommit, DiffCommit: "abc123"})
+	sh.RecordReviewItemDone("a.go", "a.go", "a.go", "fp", []model.LlmComment{{Path: "a.go", Content: "Markdown finding", SuggestionCode: "fixed()"}})
+	sh.Finalize()
+	previous := sessionExportFormat
+	t.Cleanup(func() { sessionExportFormat = previous })
+	sessionExportFormat = "md"
+	body, err := exportTo(t, repoDir, sh.SessionID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"# Code Review Report", sh.SessionID, "Markdown finding", "fixed()"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("missing %q", want)
+		}
+	}
+	sessionExportFormat = "invalid"
+	if _, err := exportTo(t, repoDir, sh.SessionID); err == nil || !strings.Contains(err.Error(), "unsupported export format") {
+		t.Fatalf("format validation: %v", err)
+	}
+}

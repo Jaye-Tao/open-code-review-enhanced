@@ -7,11 +7,21 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/http/httptest"
 	"path/filepath"
 
 	"github.com/alibaba/open-code-review/internal/model"
 	"github.com/alibaba/open-code-review/internal/session"
 )
+
+func handleCompareExport(w http.ResponseWriter, r *http.Request, root, repo string) {
+	rr := httptest.NewRecorder()
+	handleCompare(rr, r, root, repo)
+	if rr.Code != http.StatusOK { http.Error(w, rr.Body.String(), rr.Code); return }
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="compare-%s-%s.html"`, r.URL.Query().Get("before"), r.URL.Query().Get("after")))
+	_, _ = w.Write(rr.Body.Bytes())
+}
 
 func handleRepos(w http.ResponseWriter, r *http.Request, root string) {
 	if r.URL.Path != "/" {
@@ -95,8 +105,9 @@ func handleSession(w http.ResponseWriter, r *http.Request, root, repo, sessionID
 }
 
 type compareBucket struct {
-	Title    string
-	Findings []model.LlmComment
+	Title       string
+	Findings    []model.LlmComment
+	Description string
 }
 
 type comparePageData struct {
@@ -104,13 +115,14 @@ type comparePageData struct {
 	RepoName    string
 	Before      SessionSummary
 	After       SessionSummary
-	// Warning is empty unless the two runs used different review modes.
+	// Warning explains mode, chronology, or coverage limitations.
 	Warning string
 	// Buckets holds session.Compare's four buckets in the order the CLI
 	// prints them. Unlike the CLI, an empty bucket still renders (as "none"):
 	// a section vanishing from a web page is indistinguishable from a broken
 	// page, while "Resolved (0)" is itself the answer the reader came for.
-	Buckets []compareBucket
+	Buckets     []compareBucket
+	Recommended int
 }
 
 // toLlmComments adapts the viewer's parsed findings to the model type
@@ -124,6 +136,7 @@ func toLlmComments(comments []*ReviewComment) []model.LlmComment {
 			continue
 		}
 		out = append(out, model.LlmComment{
+			ID:             c.ID,
 			Path:           c.FilePath,
 			Content:        c.Content,
 			SuggestionCode: c.SuggestionCode,
@@ -151,8 +164,7 @@ func modeWarning(before, after SessionSummary) string {
 		}
 		return mode
 	}
-	return fmt.Sprintf("review modes differ (%s vs %s); the two runs may not have looked at the same files",
-		dash(before.ReviewMode), dash(after.ReviewMode))
+	return modeDifferenceWarning(dash(before.ReviewMode), dash(after.ReviewMode))
 }
 
 // handleCompare renders the `ocr session compare` result for two sessions of
@@ -209,17 +221,48 @@ func handleCompare(w http.ResponseWriter, r *http.Request, root, repo string) {
 		name = repo
 	}
 
+	warning := modeWarning(bv.Summary, av.Summary)
+	if av.Summary.RunManifest == nil {
+		warning += legacyCoverageWarning()
+	}
+	if av.Summary.Aborted || av.Summary.FailedCount > 0 || av.Summary.TerminalState == "partial" || av.Summary.TerminalState == "failed" {
+		warning += incompleteReviewWarning()
+	}
+	if bv.Summary.Timestamp.After(av.Summary.Timestamp) {
+		warning += reversedChronologyWarning()
+	}
+	recommended := 0
+	for _, c := range result.Persisting {
+		if fixPriority(c) != "Review and schedule" {
+			recommended++
+		}
+	}
 	renderTemplate(w, "compare.html", comparePageData{
 		EncodedRepo: repo,
 		RepoName:    name,
 		Before:      bv.Summary,
 		After:       av.Summary,
-		Warning:     modeWarning(bv.Summary, av.Summary),
+		Warning:     warning,
+		Recommended: recommended,
 		Buckets: []compareBucket{
-			{Title: "New", Findings: result.New},
-			{Title: "Persisting", Findings: result.Persisting},
-			{Title: "Resolved", Findings: result.Resolved},
-			{Title: "Not reviewed", Findings: result.NotReviewed},
+			{Title: "New", Findings: result.New, Description: "Newly detected findings in the after review."},
+			{Title: "Persisting", Findings: result.Persisting, Description: "Not fixed: findings detected in both reviews. Priorities are recommendations based on severity and category."},
+			{Title: "Resolved", Findings: result.Resolved, Description: "Apparently fixed: no longer detected in reviewed files. This is a comparison result, not proof of correctness."},
+			{Title: "Not reviewed", Findings: result.NotReviewed, Description: "Fix status unknown: these files were not successfully re-reviewed."},
 		},
 	})
+}
+
+// fixPriority is deliberately deterministic and explainable; it does not claim
+// another AI review or infer correctness from the availability of a code patch.
+func fixPriority(c model.LlmComment) string {
+	severity := normalizedCommentSeverity(c.Severity)
+	category := normalizedCommentCategory(c.Category)
+	if severity == "critical" || severity == "high" || category == "security" {
+		return "Fix first"
+	}
+	if severity == "medium" || category == "bug" || category == "performance" {
+		return "Recommended fix"
+	}
+	return "Review and schedule"
 }

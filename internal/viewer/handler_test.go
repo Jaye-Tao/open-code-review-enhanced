@@ -322,14 +322,14 @@ func TestHandleSession_RendersMarkIdentityNotState(t *testing.T) {
 	}
 }
 
-// The viewer is read-only: no route may accept a write. The mux registers its
+// Document routes remain read-only. The mux registers its
 // document routes with GET-only patterns, so any state-changing method is
 // answered by the ServeMux itself with 405 + Allow, and unmatched paths keep
 // 404ing. Driving newMux directly — rather than a live StartServer, whose
 // root comes from SessionsRoot() and whose goroutine outlives the test —
 // keeps the fixture root real, binds no ports, and leaks nothing. New routes
 // must register method-qualified patterns or these rows stop holding.
-func TestMux_HasNoWriteRoutes(t *testing.T) {
+func TestMux_DocumentRoutesRejectWrites(t *testing.T) {
 	root := t.TempDir()
 	writeMarkIdentityFixture(t, root, "repo", "s1")
 
