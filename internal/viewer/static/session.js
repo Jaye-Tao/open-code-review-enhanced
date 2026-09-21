@@ -45,6 +45,8 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         return;
     }
 
+    const search = document.querySelector('[data-comment-search]');
+    let query = '';
     let activeSeverity = 'all';
     let activeCategory = 'all';
 
@@ -72,7 +74,7 @@ document.querySelectorAll('.response-text').forEach(function(el) {
     let hideMarked = hideMarkedToggle ? storedHideMarked() : false;
 
     function matchesFilters(card) {
-        return (activeSeverity === 'all' || card.dataset.severity === activeSeverity) &&
+        return (!query || (card.textContent + ' ' + card.closest('.comment-file-group').querySelector('[data-copy-path]').dataset.copyPath).toLowerCase().includes(query)) && (activeSeverity === 'all' || card.dataset.severity === activeSeverity) &&
             (activeCategory === 'all' || card.dataset.category === activeCategory);
     }
 
@@ -90,24 +92,8 @@ document.querySelectorAll('.response-text').forEach(function(el) {
             filter.setAttribute('aria-pressed', String(isActive));
         });
 
-        let visibleCount = 0;
-        groups.forEach(function(group) {
-            const cards = Array.from(group.querySelectorAll('[data-comment-card]'));
-            let groupVisibleCount = 0;
-            cards.forEach(function(card) {
-                const visible = cardMatches(card);
-                card.hidden = !visible;
-                if (visible) {
-                    groupVisibleCount++;
-                    visibleCount++;
-                }
-            });
-            group.hidden = groupVisibleCount === 0;
-            const count = group.querySelector('[data-comment-count]');
-            if (count) {
-                count.textContent = groupVisibleCount + ' comment' + (groupVisibleCount === 1 ? '' : 's');
-            }
-        });
+        const visibleCount = [...document.querySelectorAll('[data-comment-card]')].filter(cardMatches).length;
+        findingsPager.refresh();
 
         // Count mark-hidden separately from filter-hidden so the toolbar
         // attributes each hidden card to its cause: "hidden" means hidden by
@@ -127,8 +113,8 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         if (emptyState) {
             emptyState.hidden = visibleCount !== 0;
             const emptyText = visibleCount === 0 && hiddenByMarks > 0
-                ? 'All matching comments are hidden by marks.'
-                : 'No comments match this filter.';
+                ? '符合条件的问题已被标记隐藏，可关闭“隐藏已标记”查看。'
+                : '没有符合筛选条件的问题。';
             // Both live regions below announce on textContent changes, so
             // write only when the sentence actually changed — every filter
             // click runs this code and re-announcing the same sentence is
@@ -139,13 +125,29 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         }
 
         if (marksCount) {
-            const marksText = markedCount + ' marked, ' + hiddenByMarks + ' hidden' +
-                (marksSaveFailed ? ' — not saved (storage unavailable)' : '');
+            const marksText = '已标记 ' + markedCount + ' 条 · 已隐藏 ' + hiddenByMarks + ' 条' +
+                (marksSaveFailed ? ' · 浏览器存储不可用，标记尚未保存' : '');
             if (marksCount.textContent !== marksText) {
                 marksCount.textContent = marksText;
             }
         }
     }
+
+    const findingsPager = ocrPager({
+        rows: [...document.querySelectorAll('[data-comment-card]')],
+        pager: document.getElementById('findings-pagination'),
+        numbers: document.getElementById('findings-page-numbers'),
+        filter: cardMatches,
+        onRender() {
+            groups.forEach(group => {
+                const cards = [...group.querySelectorAll('[data-comment-card]')];
+                const count = cards.filter(card => !card.hidden).length;
+                group.hidden = count === 0;
+                group.querySelector('[data-comment-count]').textContent = count + ' 条问题';
+            });
+        }
+    });
+    if (search) search.addEventListener('input', () => { query = search.value.trim().toLowerCase(); updateFilterState(); });
 
     filters.forEach(function(filter) {
         filter.addEventListener('click', function() {
@@ -160,7 +162,7 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         });
     });
 
-    // Marks: the viewer server is read-only, so marks are presentation state
+    // Marks are presentation state
     // kept in localStorage, keyed by the session page's path — one session,
     // one browser, no writes anywhere near the session JSONL.
     // An array, not an object literal: property lookups on an object literal
@@ -235,7 +237,7 @@ document.querySelectorAll('.response-text').forEach(function(el) {
         if (knownMarkStates.indexOf(state) !== -1) {
             card.dataset.mark = state;
             if (chip) {
-                chip.textContent = state;
+                chip.textContent = state === 'fixed' ? '已修复' : '已忽略';
                 chip.className = 'comment-badge mark-chip mark-' + state;
                 chip.hidden = false;
             }
