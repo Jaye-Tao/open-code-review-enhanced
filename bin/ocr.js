@@ -57,10 +57,33 @@ function installSignalHandlers(child, platform, signalTarget) {
   };
 }
 
-module.exports = { launcherExitCode, forwardSignal, installSignalHandlers };
+function bundledBackgroundPath() {
+  return path.join(__dirname, "..", "prompts", "open-code-review-background.md");
+}
+
+function printBundledBackgroundPath(args, output = console) {
+  if (args.length !== 1 || args[0] !== "background-path") return false;
+  const promptPath = bundledBackgroundPath();
+  if (!fs.existsSync(promptPath)) {
+    output.error(`[ERROR] Bundled background file not found: ${promptPath}`);
+    process.exitCode = 1;
+  } else {
+    output.log(promptPath);
+  }
+  return true;
+}
+
+module.exports = { launcherExitCode, forwardSignal, installSignalHandlers, bundledBackgroundPath, printBundledBackgroundPath };
 
 if (require.main !== module) {
   // Required as a module (tests); the launcher body below must not run.
+  return;
+}
+
+// The background template belongs to the npm main package rather than the
+// platform binary. Expose its installed path without launching the binary so
+// users can opt in with `ocr review --background-file "$(ocr background-path)"`.
+if (printBundledBackgroundPath(process.argv.slice(2))) {
   return;
 }
 

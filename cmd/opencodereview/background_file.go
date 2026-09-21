@@ -14,7 +14,7 @@ import (
 
 const (
 	backgroundSoftLimit    = 2000
-	backgroundHardLimit    = 8000
+	backgroundHardLimit    = 10000
 	backgroundOpenTag      = "<ocr_user_background>"
 	backgroundCloseTag     = "</ocr_user_background>"
 	maxBackgroundFileBytes = 1 << 20 // 1 MB

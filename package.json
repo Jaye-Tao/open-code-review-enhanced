@@ -11,6 +11,7 @@
     "scripts/update.js",
     "scripts/version.js",
     "scripts/platform.js",
+    "prompts/open-code-review-background.md",
     "imgs/"
   ],
   "scripts": {

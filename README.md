@@ -116,6 +116,24 @@ npm install -g open-code-review-enhanced
 
 After installation, the `ocr` command is available globally.
 
+#### Optional bundled review background
+
+The npm package includes an optional Chinese review background template. It is
+never applied automatically: without `--background-file`, `ocr review` uses
+the official built-in prompts only. To opt in, resolve the installed template
+path and pass it explicitly:
+
+```bash
+ocr review --background-file "$(ocr background-path)"
+```
+
+PowerShell:
+
+```powershell
+$background = ocr background-path
+ocr review --background-file $background
+```
+
 For other installation methods (install script, GitHub Release binary, from source), see [Installation](https://open-codereview.ai/docs/installation).
 
 #### Quick Start

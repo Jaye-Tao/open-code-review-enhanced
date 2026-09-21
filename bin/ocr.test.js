@@ -5,9 +5,21 @@
 
 const assert = require("assert");
 const os = require("os");
+const fs = require("fs");
 const { EventEmitter } = require("events");
 
-const { launcherExitCode, installSignalHandlers } = require("./ocr");
+const { launcherExitCode, installSignalHandlers, bundledBackgroundPath, printBundledBackgroundPath } = require("./ocr");
+
+// The optional background template is published in the main npm package. The
+// launcher exposes its actual installation path so global installs do not need
+// to know npm's platform-specific directory layout.
+{
+  const output = { value: "", log(value) { this.value = value; }, error() { assert.fail("background path should exist"); } };
+  assert.strictEqual(printBundledBackgroundPath(["background-path"], output), true);
+  assert.strictEqual(output.value, bundledBackgroundPath());
+  assert.strictEqual(fs.existsSync(output.value), true);
+  assert.strictEqual(printBundledBackgroundPath(["review"], output), false);
+}
 
 // Normal exits pass the child's status through unchanged.
 assert.strictEqual(launcherExitCode({ status: 0 }), 0);
@@ -74,7 +86,6 @@ console.log("ocr launcher signal policy tests passed");
 
 const { spawn } = require("child_process");
 const path = require("path");
-const fs = require("fs");
 const {
   BINARY_FILENAME,
   getPlatformPackageName,
