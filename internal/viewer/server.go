@@ -124,6 +124,11 @@ func newMux(root string) *http.ServeMux {
 		}
 		handleSessions(w, r, root, repo)
 	})
+	mux.HandleFunc("DELETE /r/{repo}/delete", func(w http.ResponseWriter, r *http.Request) {
+		repo := r.PathValue("repo")
+		if unsafeSegment(repo) { http.Error(w, "invalid repo path", http.StatusBadRequest); return }
+		handleDeleteRepository(w, r, root, repo)
+	})
 	// Registered before the {sessionID} wildcard for readability only: a
 	// literal segment wins over a wildcard whatever the order.
 	mux.HandleFunc("GET /r/{repo}/compare", func(w http.ResponseWriter, r *http.Request) {
