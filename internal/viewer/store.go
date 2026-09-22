@@ -8,7 +8,6 @@ package viewer
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -116,6 +115,30 @@ type SessionSummary struct {
 }
 
 func (s SessionSummary) ProgressPercent() int {
+	// A run manifest is authoritative for review sessions. Every selected item
+	// ends in exactly one coverage bucket, including failed and waived items, so
+	// those buckets describe progress without depending on which checkpoint
+	// records happened to be persisted.
+	if s.RunManifest != nil {
+		total := s.SelectedCount
+		if total == 0 {
+			total = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+		}
+		if total == 0 {
+			return 0
+		}
+		done := s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+		if done > total {
+			done = total
+		}
+		return done * 100 / total
+	}
+
+	// Legacy sessions have no frozen denominator. Once they have ended,
+	// files_reviewed is the best available fallback; checkpoint records refine
+	// it for sessions that stopped before all files were reviewed. An active
+	// legacy session has no reliable total yet, so keep the percentage at zero
+	// instead of turning the observed count into a misleading 100%.
 	total := s.FileCount
 	if total == 0 {
 		total = s.SelectedCount
@@ -127,6 +150,9 @@ func (s SessionSummary) ProgressPercent() int {
 		return 0
 	}
 	done := s.FilesReadCount
+	if done == 0 {
+		done = len(s.FilesReviewed)
+	}
 	if done == 0 {
 		done = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
 	}
@@ -185,16 +211,18 @@ func peekSession(path string) (SessionSummary, error) {
 	summary := SessionSummary{Aborted: true}
 	var lastLine []byte
 	readFiles := make(map[string]struct{})
+	metadataRead := false
 	readErr := readJSONLLines(f, func(line []byte) {
 		lastLine = append([]byte(nil), line...)
 
-		if summary.Timestamp.IsZero() {
-			var rec map[string]any
-			if err := json.Unmarshal(line, &rec); err != nil {
-				return
-			}
+		var rec map[string]any
+		if err := json.Unmarshal(line, &rec); err != nil {
+			return
+		}
+		typ, _ := rec["type"].(string)
+		if !metadataRead && typ == "session_start" {
 			if ts, ok := rec["timestamp"].(string); ok {
-				summary.Timestamp, _ = time.Parse(time.RFC3339, ts)
+				summary.Timestamp, _ = time.Parse(time.RFC3339Nano, ts)
 			}
 			if cwd, ok := rec["cwd"].(string); ok {
 				summary.CWD = cwd
@@ -217,22 +245,18 @@ func peekSession(path string) (SessionSummary, error) {
 			if v, ok := rec["diffCommit"].(string); ok {
 				summary.DiffCommit = v
 			}
-			return
+			metadataRead = true
 		}
 
-		// Count comments from review_item_done/reused records
-		if len(line) > 0 && (bytes.Contains(line, []byte(`"review_item_done"`)) || bytes.Contains(line, []byte(`"review_item_reused"`)) || bytes.Contains(line, []byte(`"review_item_failed"`))) {
-			var rec map[string]any
-			if err := json.Unmarshal(line, &rec); err == nil {
-				if path, ok := rec["filePath"].(string); ok && path != "" {
-					if _, seen := readFiles[path]; !seen {
-						readFiles[path] = struct{}{}
-						summary.FilesReadCount++
-					}
-				}
-				if comments, ok := rec["comments"].([]any); ok {
-					summary.CommentCount += len(comments)
-				}
+		// Count only actual terminal item records. Searching the raw JSON for a
+		// type name would mistake an LLM response containing that text for a
+		// completed file and inflate the percentage.
+		if isReviewItemRecord(typ) {
+			if addReviewedFile(readFiles, rec) {
+				summary.FilesReadCount++
+			}
+			if comments, ok := rec["comments"].([]any); ok {
+				summary.CommentCount += len(comments)
 			}
 		}
 	})
@@ -245,10 +269,36 @@ func peekSession(path string) (SessionSummary, error) {
 			}
 		}
 	}
-	if summary.RunManifest == nil && summary.FileCount < summary.FilesReadCount {
+	// A running session has no stable denominator. Only repair a completed
+	// legacy session whose end record omitted (or under-counted) files_reviewed.
+	if !summary.Aborted && summary.RunManifest == nil && summary.FileCount < summary.FilesReadCount {
 		summary.FileCount = summary.FilesReadCount
 	}
 	return summary, readErr
+}
+
+func isReviewItemRecord(typ string) bool {
+	switch typ {
+	case "review_item_done", "review_item_reused", "review_item_failed":
+		return true
+	default:
+		return false
+	}
+}
+
+func addReviewedFile(seen map[string]struct{}, rec map[string]any) bool {
+	path, _ := rec["filePath"].(string)
+	if path == "" {
+		path, _ = rec["newPath"].(string)
+	}
+	if path == "" {
+		return false
+	}
+	if _, exists := seen[path]; exists {
+		return false
+	}
+	seen[path] = struct{}{}
+	return true
 }
 
 // readJSONLLines visits each physical JSONL record without bufio.Scanner's
@@ -541,6 +591,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 	vs.Summary.Aborted = true
 	fileIndex := make(map[string]*FileGroup)
 	markOccurrences := make(map[string]int)
+	readFiles := make(map[string]struct{})
 
 	readErr := readJSONLLines(f, func(line []byte) {
 		var rec map[string]any
@@ -717,7 +768,13 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 				}
 			}
 
-		case "review_item_done", "review_item_reused":
+		case "review_item_done", "review_item_reused", "review_item_failed":
+			if addReviewedFile(readFiles, rec) {
+				vs.Summary.FilesReadCount++
+			}
+			if typ == "review_item_failed" {
+				break
+			}
 			fp, _ := rec["filePath"].(string)
 			recUUID, _ := rec["uuid"].(string)
 			if comments, ok := rec["comments"].([]any); ok {
@@ -761,6 +818,9 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 			applySessionEnd(&vs.Summary, rec)
 		}
 	})
+	if !vs.Summary.Aborted && vs.Summary.RunManifest == nil && vs.Summary.FileCount < vs.Summary.FilesReadCount {
+		vs.Summary.FileCount = vs.Summary.FilesReadCount
+	}
 
 	// Aggregate token usage across all task cards
 	fileBreakdown := make([]FileTokenUsage, 0, len(vs.Files))
