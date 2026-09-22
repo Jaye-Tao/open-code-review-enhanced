@@ -66,8 +66,8 @@ func TestPrintVersion_WithCommitAndDate(t *testing.T) {
 }
 
 func TestViewerCmd_DefaultAddr(t *testing.T) {
-	if viewerOpts.addr != "localhost:5483" {
-		t.Errorf("default addr = %q, want localhost:5483", viewerOpts.addr)
+	if viewerOpts.addr != "0.0.0.0:5483" {
+		t.Errorf("default addr = %q, want 0.0.0.0:5483", viewerOpts.addr)
 	}
 	if viewerOpts.open != viewer.OpenAuto {
 		t.Errorf("default open = %q, want %q", viewerOpts.open, viewer.OpenAuto)

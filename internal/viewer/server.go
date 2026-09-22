@@ -56,6 +56,9 @@ func StartServer(addr, openMode string) error {
 	// session JSONL exposed by this viewer (which contains LLM request bodies
 	// = source code being reviewed and the LLM's analysis of it).
 	allowed := resolveAllowedHostsFromEnv(addr)
+	if host := splitBindHost(addr); host == "" || host == "0.0.0.0" || host == "::" {
+		allowLocalInterfaceHosts(allowed)
+	}
 	guarded := hostGuard(allowed, mux)
 
 	// Outermost layer: set defense-in-depth security headers on every response.

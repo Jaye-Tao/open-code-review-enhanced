@@ -34,7 +34,7 @@ var viewerCmd = &cobra.Command{
 }
 
 func init() {
-	viewerCmd.Flags().StringVar(&viewerOpts.addr, "addr", "localhost:5483", "listen address")
+	viewerCmd.Flags().StringVar(&viewerOpts.addr, "addr", "0.0.0.0:5483", "listen address")
 	viewerCmd.Flags().StringVar(&viewerOpts.open, "open", viewer.OpenAuto,
 		"when to open the browser: auto (only on a local terminal with a display), always, or never")
 	viewerCmd.RegisterFlagCompletionFunc("open", completeEnum(viewer.OpenAuto, viewer.OpenAlways, viewer.OpenNever))
