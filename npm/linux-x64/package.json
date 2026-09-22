@@ -1,6 +1,6 @@
 {
   "name": "open-code-review-enhanced-linux-x64",
-  "version": "0.1.2",
+  "version": "1.0.1",
   "description": "Platform binary for open-code-review (linux x64)",
   "os": [
     "linux"

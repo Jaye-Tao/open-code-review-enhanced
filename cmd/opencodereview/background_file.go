@@ -29,23 +29,21 @@ func resolveBackgroundFilePath(repoDir, path string) string {
 	return filepath.Join(repoDir, path)
 }
 
-// selectBackground returns the effective background. --background and
-// --background-file are two entry points for the same capability, so only one
-// takes effect: the file wins when both are provided.
+// selectBackground returns the effective background. When both entry points
+// are provided, the file supplies the baseline instructions and the inline
+// value adds task-specific context.
 func selectBackground(inline, fromFile string) string {
 	if fromFile == "" {
 		return inline
 	}
 	if inline != "" {
-		fmt.Fprintln(os.Stderr,
-			"[ocr] both --background and --background-file were provided; "+
-				"--background-file takes precedence and --background is ignored")
+		return fromFile + "\n\n" + inline
 	}
 	return fromFile
 }
 
 // resolveBackground determines the effective background from the flag
-// combination. --background-file wins over --background; the commit-message
+// combination. File and inline backgrounds are combined; the commit-message
 // fallback fires only when neither entry point was used.
 func resolveBackground(repoDir, inline, backgroundFile, commit string) (string, error) {
 	if backgroundFile != "" {

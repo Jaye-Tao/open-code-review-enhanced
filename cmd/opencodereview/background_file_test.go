@@ -198,10 +198,10 @@ func TestLoadBackgroundFileRejectsReservedDelimiters(t *testing.T) {
 func TestSelectBackground(t *testing.T) {
 	wrapped := backgroundOpenTag + "\nfrom file\n" + backgroundCloseTag
 
-	t.Run("file takes precedence over inline", func(t *testing.T) {
+	t.Run("file and inline are combined", func(t *testing.T) {
 		got := selectBackground("inline context", wrapped)
-		if got != wrapped {
-			t.Errorf("selectBackground = %q, want file content %q", got, wrapped)
+		if !strings.HasPrefix(got, wrapped+"\n\n") || !strings.HasSuffix(got, "inline context") {
+			t.Errorf("selectBackground = %q, want file followed by inline context", got)
 		}
 	})
 
@@ -342,13 +342,13 @@ func TestResolveBackground_AllCases(t *testing.T) {
 	repo, _ := initRepoWithCommit(t, commitMsg)
 	bgFile := writeTempFile(t, "File-based context.")
 
-	t.Run("file wins over inline", func(t *testing.T) {
+	t.Run("file and inline are combined", func(t *testing.T) {
 		got, err := resolveBackground(repo, "inline", bgFile, "HEAD")
 		if err != nil {
 			t.Fatalf("resolveBackground: %v", err)
 		}
-		if strings.Contains(got, "inline") {
-			t.Errorf("inline should be ignored, got %q", got)
+		if !strings.Contains(got, "inline") {
+			t.Errorf("expected inline context to be appended, got %q", got)
 		}
 		if !strings.Contains(got, "File-based context.") {
 			t.Errorf("expected file content, got %q", got)

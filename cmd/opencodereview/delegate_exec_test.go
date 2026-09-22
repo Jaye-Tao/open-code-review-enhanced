@@ -255,10 +255,10 @@ func TestLoadDelegateContext_BackgroundFile(t *testing.T) {
 		t.Fatalf("loadDelegateContext error: %v", err)
 	}
 	if !strings.Contains(dc.opts.background, "extra background") {
-		t.Errorf("expected file content to win, got %q", dc.opts.background)
+		t.Errorf("expected file content, got %q", dc.opts.background)
 	}
-	if strings.Contains(dc.opts.background, "base") {
-		t.Errorf("inline --background should be ignored when --background-file is set, got %q", dc.opts.background)
+	if !strings.Contains(dc.opts.background, "base") {
+		t.Errorf("expected inline background to be appended, got %q", dc.opts.background)
 	}
 }
 
