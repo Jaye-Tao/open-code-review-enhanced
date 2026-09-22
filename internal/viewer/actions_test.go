@@ -97,6 +97,15 @@ func TestMarkdownExport(t *testing.T) {
 	if err := ExportSessionMarkdown(&out, root, "myrepo", "missing"); err == nil {
 		t.Fatal("missing session accepted")
 	}
+	out.Reset()
+	if err := ExportSessionMarkdownWithLanguage(&out, root, "myrepo", "s1", "zh-CN"); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"# 代码审核报告", "## 摘要", "## 问题", "路径："} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("Chinese export missing %q", want)
+		}
+	}
 	block := markdownBlock("```go\n<script>alert(1)</script>\n```")
 	if !strings.HasPrefix(block, "````\n") || !strings.HasSuffix(block, "\n````\n\n") {
 		t.Fatal(block)
@@ -106,6 +115,13 @@ func TestMarkdownExport(t *testing.T) {
 	mux.ServeHTTP(rr, httptest.NewRequest("GET", "/r/myrepo/s1/export.md", nil))
 	if rr.Code != 200 || !strings.Contains(rr.Header().Get("Content-Disposition"), "review-s1.md") || !strings.HasPrefix(rr.Header().Get("Content-Type"), "text/markdown") {
 		t.Fatal(rr)
+	}
+	r := httptest.NewRequest("GET", "/r/myrepo/s1/export?format=md&lang=zh-CN", nil)
+	r.Header.Set("Accept-Language", "en-US")
+	rr = httptest.NewRecorder()
+	mux.ServeHTTP(rr, r)
+	if rr.Code != 200 || !strings.Contains(rr.Body.String(), "# 代码审核报告") {
+		t.Fatalf("Chinese HTTP export = %d: %s", rr.Code, rr.Body.String())
 	}
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, httptest.NewRequest("GET", "/r/myrepo/missing/export.md", nil))
@@ -123,6 +139,18 @@ func TestFixPriority(t *testing.T) {
 	} {
 		if got := fixPriority(model.LlmComment{Severity: tc.severity, Category: tc.category}); got != tc.want {
 			t.Errorf("%+v: %s", tc, got)
+		}
+	}
+}
+
+func TestExportLanguage(t *testing.T) {
+	for _, tt := range []struct {
+		input, want string
+	}{
+		{"en", "en"}, {"en-US", "en"}, {"zh-CN", "zh-CN"}, {"", "zh-CN"}, {"fr", "zh-CN"},
+	} {
+		if got := exportLanguageFromRequest(tt.input, "zh-CN"); got != tt.want {
+			t.Errorf("exportLanguageFromRequest(%q) = %q, want %q", tt.input, got, tt.want)
 		}
 	}
 }
@@ -150,4 +178,3 @@ func TestEnhancedCompareAndSessionPages(t *testing.T) {
 		}
 	}
 }
-

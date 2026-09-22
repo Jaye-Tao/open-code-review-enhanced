@@ -30,10 +30,16 @@ import (
 // streaming a half-rendered page into it would leave a truncated file behind
 // when Execute fails partway through.
 func ExportSession(out io.Writer, root, encodedRepo, sessionID string) error {
+	return ExportSessionWithLanguage(out, root, encodedRepo, sessionID, exportLanguageEnglish)
+}
+
+// ExportSessionWithLanguage renders the standalone HTML report in the requested language.
+func ExportSessionWithLanguage(out io.Writer, root, encodedRepo, sessionID, language string) error {
 	vs, err := LoadSession(root, encodedRepo, sessionID)
 	if err != nil {
 		return fmt.Errorf("load session %q: %w", sessionID, err)
 	}
+	language = normalizeExportLanguage(language)
 
 	css, err := assets.ReadFile("static/style.css")
 	if err != nil {
@@ -49,6 +55,10 @@ func ExportSession(out io.Writer, root, encodedRepo, sessionID string) error {
 	if err != nil {
 		return fmt.Errorf("read embedded script: %w", err)
 	}
+	languageJS, err := assets.ReadFile("static/language.js")
+	if err != nil {
+		return fmt.Errorf("read embedded language script: %w", err)
+	}
 	actions, err := assets.ReadFile("static/actions.js")
 	if err != nil {
 		return fmt.Errorf("read embedded actions: %w", err)
@@ -57,7 +67,7 @@ func ExportSession(out io.Writer, root, encodedRepo, sessionID string) error {
 	if err != nil {
 		return fmt.Errorf("read embedded pager: %w", err)
 	}
-	js = []byte(string(pager) + "\n" + string(a11y) + "\n" + string(js) + "\n" + string(actions))
+	js = []byte("localStorage.setItem('ocr-viewer-language', '" + language + "');\n" + string(languageJS) + "\n" + string(pager) + "\n" + string(a11y) + "\n" + string(js) + "\n" + string(actions))
 
 	tmpl, err := parseTemplate("session.html")
 	if err != nil {
@@ -79,6 +89,7 @@ func ExportSession(out io.Writer, root, encodedRepo, sessionID string) error {
 		Static:      true,
 		InlineCSS:   template.CSS(css),
 		InlineJS:    template.JS(js),
+		Language:    language,
 	}); err != nil {
 		return fmt.Errorf("render session %q: %w", sessionID, err)
 	}

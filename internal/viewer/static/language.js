@@ -43,5 +43,12 @@
     const saved = localStorage.getItem('ocr-viewer-language') || 'zh-CN';
     select.addEventListener('change', () => setLanguage(select.value));
     setLanguage(saved);
+    document.addEventListener('submit', event => {
+        const form = event.target.closest && event.target.closest('form.export-form');
+        if (!form) return;
+        const url = new URL(form.action, window.location.href);
+        url.searchParams.set('lang', localStorage.getItem('ocr-viewer-language') || 'zh-CN');
+        form.action = url.toString();
+    });
     new MutationObserver(() => setLanguage(localStorage.getItem('ocr-viewer-language') || 'zh-CN')).observe(document.body, { childList: true, subtree: true });
 })();
