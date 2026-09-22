@@ -68,6 +68,13 @@
         localStorage.setItem('ocr-viewer-language', locale);
     }
     select.addEventListener('change', () => render(select.value));
+    document.addEventListener('submit', event => {
+        const form = event.target.closest && event.target.closest('form.export-form');
+        if (!form) return;
+        const url = new URL(form.action, window.location.href);
+        url.searchParams.set('lang', localStorage.getItem('ocr-viewer-language') || 'zh-CN');
+        form.action = url.toString();
+    });
     render(language());
     let queued = false;
     new MutationObserver(() => {

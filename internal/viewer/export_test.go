@@ -74,6 +74,21 @@ func TestExportSession_SelfContained(t *testing.T) {
 	}
 }
 
+func TestExportSessionWithLanguage(t *testing.T) {
+	root := sessionFixture(t, fixtureStart, fixtureComment, fixtureEnd)
+	var buf bytes.Buffer
+	if err := ExportSessionWithLanguage(&buf, root, "repo", "sess1", "en"); err != nil {
+		t.Fatal(err)
+	}
+	body := buf.String()
+	if !strings.Contains(body, `<html lang="en">`) {
+		t.Error("English export missing lang attribute")
+	}
+	if !strings.Contains(body, "ocr-viewer-language") || !strings.Contains(body, "Select language") {
+		t.Error("English export missing language bootstrap")
+	}
+}
+
 func TestExportSession_Variants(t *testing.T) {
 	tests := []struct {
 		name    string

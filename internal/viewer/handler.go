@@ -17,7 +17,10 @@ import (
 func handleCompareExport(w http.ResponseWriter, r *http.Request, root, repo string) {
 	rr := httptest.NewRecorder()
 	handleCompare(rr, r, root, repo)
-	if rr.Code != http.StatusOK { http.Error(w, rr.Body.String(), rr.Code); return }
+	if rr.Code != http.StatusOK {
+		http.Error(w, rr.Body.String(), rr.Code)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="compare-%s-%s.html"`, r.URL.Query().Get("before"), r.URL.Query().Get("after")))
 	_, _ = w.Write(rr.Body.Bytes())
@@ -82,6 +85,7 @@ type sessionPageData struct {
 	Static    bool
 	InlineCSS template.CSS
 	InlineJS  template.JS
+	Language  string
 }
 
 func handleSession(w http.ResponseWriter, r *http.Request, root, repo, sessionID string) {
