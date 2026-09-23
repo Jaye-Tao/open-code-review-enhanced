@@ -328,18 +328,18 @@ func readJSONLLines(r io.Reader, visit func([]byte)) error {
 
 // ReviewComment represents a single code review finding from a session.
 type ReviewComment struct {
-	FilePath       string
-	Content        string
-	SuggestionCode string
+	FilePath            string
+	Content             string
+	SuggestionCode      string
 	PendingConfirmation string
-	ExistingCode   string
-	StartLine      int
-	EndLine        int
-	Category       string // bug, security, performance, maintainability, test, style, documentation, other
-	Severity       string // critical, high, medium, low
-	MarkID         string `json:"-"`
-	ID             string `json:"-"`
-	Reused         bool   `json:"-"`
+	ExistingCode        string
+	StartLine           int
+	EndLine             int
+	Category            string // bug, security, performance, maintainability, test, style, documentation, other
+	Severity            string // critical, high, medium, low
+	MarkID              string `json:"-"`
+	ID                  string `json:"-"`
+	Reused              bool   `json:"-"`
 }
 
 // ViewSession holds fully parsed records for one session.
@@ -794,6 +794,9 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 					if v, ok := cm["suggestion_code"].(string); ok {
 						rc.SuggestionCode = v
 					}
+					if v, ok := cm["pending_confirmation"].(string); ok {
+						rc.PendingConfirmation = v
+					}
 					if v, ok := cm["existing_code"].(string); ok {
 						rc.ExistingCode = v
 					}
@@ -947,5 +950,3 @@ func taskDoneSucceeded(arguments string) bool {
 	stateString, ok := state.(string)
 	return ok && stateString == "DONE"
 }
-
-

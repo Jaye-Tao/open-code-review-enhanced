@@ -129,7 +129,10 @@ func newMux(root string) *http.ServeMux {
 	})
 	mux.HandleFunc("DELETE /r/{repo}/delete", func(w http.ResponseWriter, r *http.Request) {
 		repo := r.PathValue("repo")
-		if unsafeSegment(repo) { http.Error(w, "invalid repo path", http.StatusBadRequest); return }
+		if unsafeSegment(repo) {
+			http.Error(w, "invalid repo path", http.StatusBadRequest)
+			return
+		}
 		handleDeleteRepository(w, r, root, repo)
 	})
 	// Registered before the {sessionID} wildcard for readability only: a
@@ -170,7 +173,9 @@ func newMux(root string) *http.ServeMux {
 
 	for pattern, handler := range map[string]func(http.ResponseWriter, *http.Request, string, string, string){
 		"GET /r/{repo}/{sessionID}/export.md": handleMarkdown,
-		"GET /r/{repo}/{sessionID}/export": func(w http.ResponseWriter, r *http.Request, root, repo, id string) { handleSessionExport(w, r, root, repo, id, r.URL.Query().Get("format")) },
+		"GET /r/{repo}/{sessionID}/export": func(w http.ResponseWriter, r *http.Request, root, repo, id string) {
+			handleSessionExport(w, r, root, repo, id, r.URL.Query().Get("format"))
+		},
 		"DELETE /r/{repo}/{sessionID}/delete": handleDeleteSession,
 	} {
 		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {

@@ -204,3 +204,13 @@ ocr delegate rule src/main.go src/handler.go
 ## ライセンス
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
+
+## バージョン 1.0.2
+
+HTML/Markdown 比較エクスポート、失敗ファイルの詳細と再開案内を追加。確認待ち情報を保持し、言語の一貫性、比較レイアウト、POSIX 実行権限を改善しました。
+
+[1.0.2](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.2/docs/release-notes-1.0.2.md)
+
+```sh
+npm install -g open-code-review-enhanced@1.0.2
+```

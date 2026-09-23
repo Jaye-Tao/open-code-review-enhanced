@@ -222,3 +222,13 @@ This project exists thanks to all the people who contribute. See [CONTRIBUTING.m
 ## License
 
 [Apache-2.0](LICENSE) — Copyright 2026 Alibaba
+
+## Version 1.0.2
+
+Adds standalone HTML/Markdown comparison exports and failed-file details with resume guidance; preserves pending confirmations in review output and the dashboard; improves language consistency, comparison layouts, and POSIX executable permissions.
+
+[1.0.2](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.2/docs/release-notes-1.0.2.md)
+
+```sh
+npm install -g open-code-review-enhanced@1.0.2
+```

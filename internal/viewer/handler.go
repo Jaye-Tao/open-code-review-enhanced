@@ -349,5 +349,3 @@ func fixPriority(c model.LlmComment) string {
 	}
 	return "Review and schedule"
 }
-
-
