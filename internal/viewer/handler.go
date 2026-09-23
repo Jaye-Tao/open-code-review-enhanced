@@ -9,20 +9,35 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
+	"strings"
 
 	"github.com/alibaba/open-code-review/internal/model"
 	"github.com/alibaba/open-code-review/internal/session"
 )
 
 func handleCompareExport(w http.ResponseWriter, r *http.Request, root, repo string) {
+	compareOutput(w, r, root, repo, "html")
+	return
+}
+
+func handleCompareMarkdownExport(w http.ResponseWriter, r *http.Request, root, repo string) {
+	compareOutput(w, r, root, repo, "markdown")
+}
+
+func compareOutput(w http.ResponseWriter, r *http.Request, root, repo, format string) {
 	rr := httptest.NewRecorder()
-	handleCompare(rr, r, root, repo)
+	handleCompareFormat(rr, r, root, repo, format == "html", format == "markdown")
 	if rr.Code != http.StatusOK {
 		http.Error(w, rr.Body.String(), rr.Code)
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="compare-%s-%s.html"`, r.URL.Query().Get("before"), r.URL.Query().Get("after")))
+	if format == "markdown" {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="compare-%s-%s.md"`, r.URL.Query().Get("before"), r.URL.Query().Get("after")))
+	} else {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="compare-%s-%s.html"`, r.URL.Query().Get("before"), r.URL.Query().Get("after")))
+	}
 	_, _ = w.Write(rr.Body.Bytes())
 }
 
@@ -127,6 +142,9 @@ type comparePageData struct {
 	// page, while "Resolved (0)" is itself the answer the reader came for.
 	Buckets     []compareBucket
 	Recommended int
+	Static      bool
+	InlineCSS   template.CSS
+	InlineJS    template.JS
 }
 
 // toLlmComments adapts the viewer's parsed findings to the model type
@@ -140,7 +158,6 @@ func toLlmComments(comments []*ReviewComment) []model.LlmComment {
 			continue
 		}
 		out = append(out, model.LlmComment{
-			ID:             c.ID,
 			Path:           c.FilePath,
 			Content:        c.Content,
 			SuggestionCode: c.SuggestionCode,
@@ -175,6 +192,10 @@ func modeWarning(before, after SessionSummary) string {
 // the same repo. repo is the on-disk directory name, passed through from the
 // URL exactly as handleSessions/handleSession pass it.
 func handleCompare(w http.ResponseWriter, r *http.Request, root, repo string) {
+	handleCompareFormat(w, r, root, repo, false, false)
+}
+
+func handleCompareFormat(w http.ResponseWriter, r *http.Request, root, repo string, standalone, markdown bool) {
 	before := r.URL.Query().Get("before")
 	after := r.URL.Query().Get("after")
 	if before == "" || after == "" {
@@ -241,7 +262,7 @@ func handleCompare(w http.ResponseWriter, r *http.Request, root, repo string) {
 			recommended++
 		}
 	}
-	renderTemplate(w, "compare.html", comparePageData{
+	data := comparePageData{
 		EncodedRepo: repo,
 		RepoName:    name,
 		Before:      bv.Summary,
@@ -254,7 +275,64 @@ func handleCompare(w http.ResponseWriter, r *http.Request, root, repo string) {
 			{Title: "Resolved", Findings: result.Resolved, Description: "Apparently fixed: no longer detected in reviewed files. This is a comparison result, not proof of correctness."},
 			{Title: "Not reviewed", Findings: result.NotReviewed, Description: "Fix status unknown: these files were not successfully re-reviewed."},
 		},
-	})
+	}
+	if markdown {
+		w.Header().Set("Content-Type", "text/markdown; charset=utf-8")
+		_, _ = w.Write([]byte(compareMarkdown(data)))
+		return
+	}
+	if standalone {
+		css, err := assets.ReadFile("static/style.css")
+		if err != nil {
+			http.Error(w, "failed to load stylesheet", http.StatusInternalServerError)
+			return
+		}
+		actions, err := assets.ReadFile("static/actions.js")
+		if err != nil {
+			http.Error(w, "failed to load comparison script", http.StatusInternalServerError)
+			return
+		}
+		compareJS, err := assets.ReadFile("static/compare.js")
+		if err != nil {
+			http.Error(w, "failed to load comparison script", http.StatusInternalServerError)
+			return
+		}
+		data.Static, data.InlineCSS, data.InlineJS = true, template.CSS(css), template.JS(string(actions)+"\n"+string(compareJS))
+	}
+	renderTemplate(w, "compare.html", data)
+}
+
+func compareMarkdown(data comparePageData) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "# 会话对比\n\n- 仓库：%s\n- 审核前：%s（%s）\n- 审核后：%s（%s）\n", data.RepoName, data.Before.SessionID, formatTime(data.Before.Timestamp), data.After.SessionID, formatTime(data.After.Timestamp))
+	if data.Warning != "" {
+		fmt.Fprintf(&b, "\n> 注意：%s\n", data.Warning)
+	}
+	fmt.Fprintf(&b, "\n## 结果概览\n\n| 状态 | 数量 |\n| --- | ---: |\n")
+	for _, bucket := range data.Buckets {
+		fmt.Fprintf(&b, "| %s | %d |\n", bucket.Title, len(bucket.Findings))
+	}
+	for _, bucket := range data.Buckets {
+		fmt.Fprintf(&b, "\n## %s（%d）\n", bucket.Title, len(bucket.Findings))
+		if len(bucket.Findings) == 0 {
+			b.WriteString("\n当前分类没有问题。\n")
+			continue
+		}
+		for _, finding := range bucket.Findings {
+			fmt.Fprintf(&b, "\n### %s:%d-%d\n\n- 类别：%s\n- 严重程度：%s\n", finding.Path, finding.StartLine, finding.EndLine, finding.Category, finding.Severity)
+			if bucket.Title == "New" || bucket.Title == "Persisting" {
+				fmt.Fprintf(&b, "- 处理建议：%s\n", fixPriority(finding))
+			}
+			fmt.Fprintf(&b, "\n%s\n", finding.Content)
+			if finding.ExistingCode != "" {
+				fmt.Fprintf(&b, "\n现有代码：\n\n```\n%s\n```\n", finding.ExistingCode)
+			}
+			if finding.SuggestionCode != "" {
+				fmt.Fprintf(&b, "\n建议修改：\n\n```\n%s\n```\n", finding.SuggestionCode)
+			}
+		}
+	}
+	return b.String()
 }
 
 // fixPriority is deliberately deterministic and explainable; it does not claim
