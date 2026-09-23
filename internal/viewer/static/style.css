@@ -530,6 +530,53 @@ h3 {
     margin-bottom: 0.35rem;
     font-weight: 500;
 }
+.failed-items {
+    margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+}
+.failed-items h4 {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+}
+.failed-items-help {
+    margin: 0 0 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+.failed-items-resume {
+    margin: 0 0 0.75rem;
+    font-size: 0.875rem;
+    overflow-wrap: anywhere;
+}
+.failed-items-list {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.failed-items-list li {
+    padding: 0.75rem;
+    border-left: 3px solid var(--danger);
+    background: var(--surface-alt);
+    overflow-wrap: anywhere;
+}
+.failed-item-path {
+    font-weight: 600;
+}
+.failed-item-class {
+    margin-left: 0.6rem;
+    color: var(--danger);
+    font-size: 0.8rem;
+}
+.failed-items-list p {
+    margin: 0.4rem 0 0;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+}
 .token-table {
     width: 100%;
     border-collapse: separate;

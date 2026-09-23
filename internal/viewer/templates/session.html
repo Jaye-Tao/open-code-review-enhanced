@@ -47,6 +47,24 @@
         <div class="token-item"><div class="token-label">失败</div><div class="token-value{{if .Session.Summary.FailedCount}} token-value-error{{end}}">{{.Session.Summary.FailedCount}}</div></div>
         <div class="token-item"><div class="token-label">跳过</div><div class="token-value">{{.Session.Summary.WaivedCount}}</div></div>
     </div>
+    {{if .Session.Summary.FailedCount}}
+    <section class="failed-items" aria-labelledby="failed-items-title">
+        <h4 id="failed-items-title">Failed files</h4>
+        <p class="failed-items-help">These files were not reviewed successfully. Resuming reuses completed files and retries failed files, provided the reviewed input and rules have not changed.</p>
+        {{if eq .Session.Summary.RunManifest.Input.Mode "range"}}
+        <p class="failed-items-resume">From the repository root, run <code>ocr review --from {{.Session.Summary.RunManifest.Input.RequestedFrom}} --to {{.Session.Summary.RunManifest.Input.RequestedHead}} --resume {{.Session.Summary.SessionID}}</code></p>
+        {{else if eq .Session.Summary.RunManifest.Input.Mode "commit"}}
+        <p class="failed-items-resume">From the repository root, run <code>ocr review --commit {{.Session.Summary.RunManifest.Input.RequestedHead}} --resume {{.Session.Summary.SessionID}}</code></p>
+        {{else}}
+        <p class="failed-items-resume">Workspace reviews cannot currently be resumed.</p>
+        {{end}}
+        <ul class="failed-items-list">
+            {{range .Session.Summary.RunManifest.Coverage.Failed}}
+            <li><code class="failed-item-path">{{.Path}}</code><span class="failed-item-class">{{.Classification}}</span>{{if .Reason}}<p>{{.Reason}}</p>{{else}}<p>No failure reason was recorded.</p>{{end}}</li>
+            {{end}}
+        </ul>
+    </section>
+    {{end}}
 </div>
 {{end}}
 
