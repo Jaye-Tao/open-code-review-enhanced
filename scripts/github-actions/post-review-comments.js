@@ -2229,6 +2229,9 @@ function formatComment(comment, id) {
   const badge = buildBadgeImage(comment);
   if (badge) body += `${badge}\n`;
   body += comment.content || "";
+  if (comment.pending_confirmation) {
+    body += `\n\n**Pending confirmation:**\n${comment.pending_confirmation}`;
+  }
   if (comment.suggestion_code && comment.existing_code) {
     body += "\n\n**Suggestion:**\n";
     body += fencedBlock(comment.suggestion_code, "suggestion");
@@ -2253,6 +2256,10 @@ function formatCommentMarkdown(comment, error) {
     md += `⚠️ GitHub could not post this as an inline comment: ${error}\n\n`;
   }
   md += comment.content || "";
+
+  if (comment.pending_confirmation) {
+    md += `\n\n**Pending confirmation:**\n${comment.pending_confirmation}`;
+  }
 
   if (comment.suggestion_code && comment.existing_code) {
     md += "\n\n<details><summary>💡 Suggested Change</summary>\n\n";

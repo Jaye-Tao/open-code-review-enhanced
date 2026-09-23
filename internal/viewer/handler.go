@@ -158,14 +158,16 @@ func toLlmComments(comments []*ReviewComment) []model.LlmComment {
 			continue
 		}
 		out = append(out, model.LlmComment{
-			Path:           c.FilePath,
-			Content:        c.Content,
-			SuggestionCode: c.SuggestionCode,
-			ExistingCode:   c.ExistingCode,
-			StartLine:      c.StartLine,
-			EndLine:        c.EndLine,
-			Category:       c.Category,
-			Severity:       c.Severity,
+			Path:                c.FilePath,
+			Content:             c.Content,
+			SuggestionCode:      c.SuggestionCode,
+            PendingConfirmation: c.PendingConfirmation,
+			PendingConfirmation: c.PendingConfirmation,
+			ExistingCode:        c.ExistingCode,
+			StartLine:           c.StartLine,
+			EndLine:             c.EndLine,
+			Category:            c.Category,
+			Severity:            c.Severity,
 		})
 	}
 	return out
@@ -348,3 +350,5 @@ func fixPriority(c model.LlmComment) string {
 	}
 	return "Review and schedule"
 }
+
+

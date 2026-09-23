@@ -36,7 +36,7 @@
         "properties": {
           "comments": {
             "type": "array",
-            "description": "A list of comments. Each item should contain 'content' and 'existing_code'.",
+            "description": "A list of actionable findings. Each item must include content, existing_code, suggestion_code, pending_confirmation, category, severity, and path.",
             "items": {
               "type": "object",
               "properties": {
@@ -50,7 +50,12 @@
                 },
                 "suggestion_code": {
                   "type": "string",
-                  "description": "Corresponding suggested code snippet, maintaining consistent code style."
+                  "minLength": 1,
+                  "description": "A non-empty minimal candidate code change in the existing style. If business confirmation is needed, provide a conditional patch and explain that it should be applied only if confirmed."
+                },
+                "pending_confirmation": {
+                  "type": "string",
+                  "description": "A precise business-rule or invariant question that must be confirmed before classifying or fixing the concern, including how the answer changes the conclusion. Use an empty string when none is needed."
                 },
                 "category": {
                   "type": "string",
@@ -84,6 +89,8 @@
               "required": [
                 "content",
                 "existing_code",
+                "suggestion_code",
+                "pending_confirmation",
                 "category",
                 "severity",
                 "path"

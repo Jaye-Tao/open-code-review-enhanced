@@ -9,6 +9,7 @@ type LlmComment struct {
 	Path           string `json:"path"`
 	Content        string `json:"content"`
 	SuggestionCode string `json:"suggestion_code,omitempty"`
+    PendingConfirmation string `json:"pending_confirmation,omitempty"`
 	ExistingCode   string `json:"existing_code,omitempty"`
 	StartLine      int    `json:"start_line"`
 	EndLine        int    `json:"end_line"`
@@ -28,3 +29,4 @@ type CodeReviewResult struct {
 	ExistingCode      string `json:"existing_code"`
 	SuggestionCode    string `json:"suggestion_code"`
 }
+

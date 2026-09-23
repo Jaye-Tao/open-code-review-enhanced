@@ -16,14 +16,15 @@ import (
 // file header, a severity badge, and a suggestion diff.
 func sampleComment() model.LlmComment {
 	return model.LlmComment{
-		Path:           "internal/mcp/client.go",
-		StartLine:      27,
-		EndLine:        28,
-		Content:        "Potential environment variable leak.",
-		Category:       "security",
-		Severity:       "high",
-		ExistingCode:   "old := 1\n",
-		SuggestionCode: "new := 1\n",
+		Path:                "internal/mcp/client.go",
+		StartLine:           27,
+		EndLine:             28,
+		Content:             "Potential environment variable leak.",
+		PendingConfirmation: "Confirm whether this variable can contain credentials.",
+		Category:            "security",
+		Severity:            "high",
+		ExistingCode:        "old := 1\n",
+		SuggestionCode:      "new := 1\n",
 	}
 }
 
@@ -41,6 +42,7 @@ func TestRenderComment_NoColorIsPlain(t *testing.T) {
 		"internal/mcp/client.go:27-28",
 		"[security · high]",
 		"Potential environment variable leak.",
+		"Pending confirmation: Confirm whether this variable can contain credentials.",
 		"+ new := 1",
 		"- old := 1",
 	} {

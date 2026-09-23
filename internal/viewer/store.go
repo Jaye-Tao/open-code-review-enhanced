@@ -946,3 +946,5 @@ func taskDoneSucceeded(arguments string) bool {
 	stateString, ok := state.(string)
 	return ok && stateString == "DONE"
 }
+
+

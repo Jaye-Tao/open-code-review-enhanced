@@ -216,7 +216,7 @@ func TestApplyLanguage(t *testing.T) {
 	}
 
 	tpl.ApplyLanguage("Chinese")
-	suffix := "\n\nAlways respond in Chinese."
+	suffix := "\n\nAlways respond in Chinese (Simplified). Use this language consistently for all explanatory text and fields; do not switch languages between findings. Preserve source code, identifiers, file paths, and literals as needed."
 	if !strings.HasSuffix(tpl.MainTask.Messages[0].Content, suffix) {
 		t.Errorf("MainTask system message does not end with %q", suffix)
 	}
@@ -235,9 +235,20 @@ func TestApplyLanguage_DefaultEnglish(t *testing.T) {
 	}
 
 	tpl.ApplyLanguage("")
-	suffix := "\n\nAlways respond in English."
+	suffix := "\n\nAlways respond in English. Use this language consistently for all explanatory text and fields; do not switch languages between findings. Preserve source code, identifiers, file paths, and literals as needed."
 	if !strings.HasSuffix(tpl.MainTask.Messages[0].Content, suffix) {
 		t.Errorf("MainTask system message does not end with %q", suffix)
+	}
+}
+
+func TestApplyLanguage_LanguageCode(t *testing.T) {
+	tpl, err := LoadDefault()
+	if err != nil {
+		t.Fatal(err)
+	}
+	tpl.ApplyLanguage("zh")
+	if !strings.Contains(tpl.MainTask.Messages[0].Content, "Always respond in Chinese (Simplified).") {
+		t.Fatalf("language code was not expanded in the main task prompt: %q", tpl.MainTask.Messages[0].Content)
 	}
 }
 
@@ -400,11 +411,43 @@ func TestApplyLanguage_SkipsNonSystemMessages(t *testing.T) {
 }
 
 func TestResolveLang(t *testing.T) {
-	if got := resolveLang(""); got != "English" {
-		t.Errorf("resolveLang(\"\") = %q, want \"English\"", got)
+	for _, tt := range []struct {
+		input string
+		want  string
+	}{
+		{"", "English"},
+		{"en", "English"},
+		{"zh", "Chinese (Simplified)"},
+		{"ZH-cn", "Chinese (Simplified)"},
+		{"zh-Hant", "Chinese (Traditional)"},
+		{"Chinese", "Chinese (Simplified)"},
+		{"ja", "Japanese"},
+		{"ko-KR", "Korean"},
+		{"ru", "Russian"},
+		{"German", "German"},
+	} {
+		if got := resolveLang(tt.input); got != tt.want {
+			t.Errorf("resolveLang(%q) = %q, want %q", tt.input, got, tt.want)
+		}
 	}
-	if got := resolveLang("German"); got != "German" {
-		t.Errorf("resolveLang(\"German\") = %q, want \"German\"", got)
+}
+
+func TestDefaultMainTaskPrompt_ContainsFindingRequirements(t *testing.T) {
+	tpl, err := LoadDefault()
+	if err != nil {
+		t.Fatal(err)
+	}
+	system := tpl.MainTask.Messages[0].Content
+	for _, required := range []string{
+		"pending_confirmation",
+		"suggestion_code",
+		"Phrase the finding conditionally",
+		"Always include `pending_confirmation`",
+		"configured review language",
+	} {
+		if !strings.Contains(system, required) {
+			t.Errorf("main task system prompt is missing %q", required)
+		}
 	}
 }
 

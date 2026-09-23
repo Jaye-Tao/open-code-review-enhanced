@@ -118,6 +118,10 @@ func renderComment(comment model.LlmComment, out io.Writer) {
 		fmt.Fprintln(out)
 	}
 
+	if pending := strings.TrimSpace(comment.PendingConfirmation); pending != "" {
+		fmt.Fprintf(out, "Pending confirmation: %s\n\n", sanitizeTerminal(pending))
+	}
+
 	if len(lines) > 0 {
 		for _, dl := range lines {
 			switch dl.Type {

@@ -72,7 +72,8 @@ OCR이 라인 번호를 알아서 계산합니다.
       {
         "content": "string — the comment in the configured language",
         "existing_code": "string — snippet from the diff to anchor on",
-        "suggestion_code": "string — optional fix snippet",
+        "suggestion_code": "string — 비어 있지 않은 최소 후보 수정 코드. 확인이 필요하면 조건부로 표시",
+        "pending_confirmation": "string — 확인할 업무 규칙 또는 불변 조건. 확인할 내용이 없으면 비움",
         "thinking": "string — optional, the model's reasoning for this comment"
       }
     ]
@@ -81,8 +82,11 @@ OCR이 라인 번호를 알아서 계산합니다.
 ```
 
 `comments`가 배열이라 모델이 한 번의 도구 호출로 코멘트를 여러 개 낼 수 있습니다.
-`content`와 `existing_code`는 필수이고 `suggestion_code`는 선택이지만 채우는 편이
-좋습니다. `path`는 최상위의 선택적 재정의 값이며, 없으면 Agent가 현재 리뷰 중인
+`content`, `existing_code`, `suggestion_code`, `pending_confirmation`은 필수입니다.
+`suggestion_code`에는 바로 적용할 수 있는 수정을 작성하고, 구체적인 업무 또는 설계 결정을 먼저 확인해야
+항상 비어 있지 않은 최소 후보 수정을 작성하고, 구체적인 업무 또는 설계 결정을 먼저 확인해야 한다면 확인 후 적용하는 조건부 수정으로 표시합니다.
+확인할 내용이 없으면 `pending_confirmation`은 비워 둡니다.
+`path`는 최상위의 선택적 재정의 값이며, 없으면 Agent가 현재 리뷰 중인
 파일을 넣습니다. 모델이 빠뜨려도 Agent가 자동으로 채우므로 모델이 직접 지정할 일은
 거의 없습니다. 코멘트별 `thinking`은 모델의 판단 근거를 담아 코멘트에 함께
 보존합니다. OCR이 현재 턴에서 모델이 낸 추론 내용으로 채우며(모델이 내지 않으면 빈
@@ -90,7 +94,7 @@ OCR이 라인 번호를 알아서 계산합니다.
 
 > **`thinking`은 런타임 전용 필드입니다.** OCR은 이 값을 파싱해 저장하지만,
 > `tools.json`에서 모델에 알리는 `code_comment` 스키마에는 일부러 **넣지
-> 않았습니다**(`content`, `existing_code`, `suggestion_code`만 있습니다). 그래도
+> 않았습니다**(`content`, `existing_code`, `suggestion_code`, `pending_confirmation`만 있습니다). 그래도
 > `thinking` 블록을 내는 성능 좋은 모델이라면 그 값이 저장됩니다. 대부분은 보내지
 > 않으며 그래도 문제없습니다.
 
@@ -120,7 +124,8 @@ OCR은 **동적 슬라이딩 윈도**로 diff를 훑어 `existing_code`의 텍�
     {
       "content": "`tx.Rollback()` is never deferred — early returns leak the transaction.",
       "existing_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}",
-      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()"
+      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()",
+      "pending_confirmation": ""
     }
   ]
 }

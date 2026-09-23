@@ -73,14 +73,15 @@ func writeCompareSession(t *testing.T, dir, id, reviewMode, coverage string, fin
 func TestToLlmComments(t *testing.T) {
 	t.Parallel() // pure function: no shared state, no t.Setenv, no temp dirs
 	full := &ReviewComment{
-		FilePath:       "a.go",
-		Content:        "content",
-		SuggestionCode: "sugg",
-		ExistingCode:   "existing",
-		StartLine:      3,
-		EndLine:        5,
-		Category:       "bug",
-		Severity:       "high",
+		FilePath:            "a.go",
+		Content:             "content",
+		SuggestionCode:      "sugg",
+		PendingConfirmation: "Confirm the business rule.",
+		ExistingCode:        "existing",
+		StartLine:           3,
+		EndLine:             5,
+		Category:            "bug",
+		Severity:            "high",
 	}
 	tests := []struct {
 		name string
@@ -97,14 +98,15 @@ func TestToLlmComments(t *testing.T) {
 			name: "every field is carried",
 			in:   []*ReviewComment{full},
 			want: []model.LlmComment{{
-				Path:           "a.go",
-				Content:        "content",
-				SuggestionCode: "sugg",
-				ExistingCode:   "existing",
-				StartLine:      3,
-				EndLine:        5,
-				Category:       "bug",
-				Severity:       "high",
+				Path:                "a.go",
+				Content:             "content",
+				SuggestionCode:      "sugg",
+				PendingConfirmation: "Confirm the business rule.",
+				ExistingCode:        "existing",
+				StartLine:           3,
+				EndLine:             5,
+				Category:            "bug",
+				Severity:            "high",
 			}},
 		},
 	}
