@@ -95,7 +95,8 @@ Each comment in OCR's output contains:
 - `start_line` / `end_line`: Line range (both 0 means positioning failed)
 - `category`: Issue category (bug, security, performance, maintainability, test, style, documentation, other)
 - `severity`: Issue severity (critical, high, medium, low)
-- `suggestion_code`: Optional fix suggestion
+- `suggestion_code`: Non-empty minimal candidate fix in the existing code style; describe it as conditional when a business decision must be confirmed first
+- `pending_confirmation`: Exact business rule or invariant to confirm, including how the answer changes the finding; empty when no confirmation is needed
 - `existing_code`: Optional original code snippet
 - `thinking`: Optional LLM reasoning process
 
@@ -110,7 +111,8 @@ Present results grouped by severity using this template:
 ### Critical
 
 - **`path/to/file.java:42`** [bug] — Brief description
-  > Recommendation: How to fix
+  > Recommendation: Include a concrete code change; make it conditional when business confirmation is needed
+  > Pending confirmation: State the exact business decision when the finding depends on it
 
 ### High
 

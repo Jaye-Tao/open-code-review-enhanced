@@ -154,13 +154,14 @@ func TestScanItem_AsDiff_Binary(t *testing.T) {
 
 func TestLlmComment_JSON(t *testing.T) {
 	c := LlmComment{
-		Path:           "main.go",
-		Content:        "fix this",
-		SuggestionCode: "new code",
-		ExistingCode:   "old code",
-		StartLine:      10,
-		EndLine:        15,
-		Thinking:       "reasoning",
+		Path:                "main.go",
+		Content:             "fix this",
+		SuggestionCode:      "new code",
+		PendingConfirmation: "Confirm whether null is allowed.",
+		ExistingCode:        "old code",
+		StartLine:           10,
+		EndLine:             15,
+		Thinking:            "reasoning",
 	}
 
 	data, err := json.Marshal(c)

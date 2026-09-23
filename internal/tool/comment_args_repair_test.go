@@ -58,6 +58,20 @@ func TestParseComments_RepairsUnescapedProseQuote(t *testing.T) {
 	}
 }
 
+func TestParseComments_RepairsPendingConfirmationField(t *testing.T) {
+	serialized := `[{"content":"query may include removed rows","existing_code":"select * from items","suggestion_code":"select * from items where deleted = false","pending_confirmation":"Confirm whether this list should include deleted rows; if not, keep the filter.","path":"items.sql"}]`
+	comments, repair, errMsg := ParseCommentsWithPath(map[string]any{"comments": serialized}, "")
+	if errMsg != "" {
+		t.Fatalf("expected the repair to recover the batch, got error: %s", errMsg)
+	}
+	if repair != nil {
+		t.Fatalf("unexpected repair: %+v", repair)
+	}
+	if len(comments) != 1 || comments[0].PendingConfirmation == "" {
+		t.Fatalf("pending confirmation was not preserved: %+v", comments)
+	}
+}
+
 func TestParseComments_RepairsProseQuoteAcrossMultiByteRunes(t *testing.T) {
 	comments, repair, errMsg := ParseCommentsWithPath(
 		map[string]any{"comments": proseQuoteChinese}, "fallback.go")

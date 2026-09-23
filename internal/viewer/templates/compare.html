@@ -40,6 +40,7 @@
             <span class="comment-lines">{{.Path}}{{if .StartLine}}:L{{.StartLine}}{{if and .EndLine (ne .EndLine .StartLine)}}-L{{.EndLine}}{{end}}{{end}}</span>
         </div>
         <div class="comment-content">{{.Content}}</div>
+        {{if .PendingConfirmation}}<div class="pending-confirmation"><strong>Pending confirmation:</strong> {{.PendingConfirmation}}</div>{{end}}
         {{if or .ExistingCode .SuggestionCode}}
         <div class="comment-code-diff">
             {{if .ExistingCode}}

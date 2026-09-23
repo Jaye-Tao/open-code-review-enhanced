@@ -135,14 +135,15 @@ func TestEmitRunResult_SarifNoFiles(t *testing.T) {
 
 func TestOutputSARIF_FullFieldMapping(t *testing.T) {
 	comment := model.LlmComment{
-		Path:           "internal/agent/agent.go",
-		Content:        "Potential nil pointer dereference",
-		SuggestionCode: "if err != nil { return err }",
-		ExistingCode:   "return err",
-		StartLine:      42,
-		EndLine:        42,
-		Category:       "bug",
-		Severity:       "high",
+		Path:                "internal/agent/agent.go",
+		Content:             "Potential nil pointer dereference",
+		SuggestionCode:      "if err != nil { return err }",
+		PendingConfirmation: "Confirm whether this path can receive a nil value.",
+		ExistingCode:        "return err",
+		StartLine:           42,
+		EndLine:             42,
+		Category:            "bug",
+		Severity:            "high",
 	}
 	out := captureStdout(t, func() {
 		if err := outputSARIF([]model.LlmComment{comment}, "v1", nil, nil, os.Stdout); err != nil {
@@ -159,7 +160,7 @@ func TestOutputSARIF_FullFieldMapping(t *testing.T) {
 		t.Errorf("level = %v, want error", result["level"])
 	}
 	msg := result["message"].(map[string]any)
-	if msg["text"] != "Potential nil pointer dereference" {
+	if msg["text"] != "Potential nil pointer dereference\n\nPending confirmation: Confirm whether this path can receive a nil value." {
 		t.Errorf("message.text = %v", msg["text"])
 	}
 	// locations (array, not location object)

@@ -2080,10 +2080,11 @@ function testFormatCommentBadgePlacement() {
   assert.strictEqual(noBadge, "<!-- ocr-1-1-abcd -->\nbody");
   // suggestion block still appends after the badge
   const withSuggestion = formatComment(
-    { content: "c", category: "bug", severity: "high", existing_code: "old", suggestion_code: "new" },
+    { content: "c", category: "bug", severity: "high", existing_code: "old", suggestion_code: "new", pending_confirmation: "Confirm the business rule." },
     "ocr-1-1-abcd"
   );
   assert.match(withSuggestion, /!\[bug · high\]/);
+  assert.match(withSuggestion, /\*\*Pending confirmation:\*\*\nConfirm the business rule\./);
   assert.match(withSuggestion, /\*\*Suggestion:\*\*/);
   assert.match(withSuggestion, /```suggestion/);
 }
@@ -2100,6 +2101,15 @@ function testFormatCommentMarkdownBadgePlacement() {
   const noBadge = formatCommentMarkdown({ path: "a.js", content: "body" });
   assert.ok(noBadge.startsWith("### 📄 `a.js`"));
   assert.ok(!noBadge.includes("·"));
+}
+
+function testFormatCommentMarkdownShowsPendingConfirmation() {
+  const md = formatCommentMarkdown({
+    path: "a.js",
+    content: "The behavior depends on a business rule.",
+    pending_confirmation: "Confirm whether deleted records should appear.",
+  });
+  assert.match(md, /\*\*Pending confirmation:\*\*\nConfirm whether deleted records should appear\./);
 }
 
 // I3: with no routing input set, placement is identical to today (modulo the
@@ -2396,6 +2406,7 @@ async function main() {
   await testFindingMatchingBothConditionsRoutesOnce();
   testFormatCommentBadgePlacement();
   testFormatCommentMarkdownBadgePlacement();
+  testFormatCommentMarkdownShowsPendingConfirmation();
   await testNoRoutingInputPreservesBehavior();
   await testRouteSeverityBelowRoutesToSummary();
   await testRouteCategoriesRoutesToSummary();

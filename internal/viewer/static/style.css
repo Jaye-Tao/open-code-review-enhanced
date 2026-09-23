@@ -1351,6 +1351,16 @@ p {
     word-break: break-word;
 }
 
+.pending-confirmation {
+    margin-top: 0.65rem;
+    padding-left: 0.65rem;
+    border-left: 2px solid var(--danger);
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    overflow-wrap: anywhere;
+}
+
 .comment-code-diff {
     display: grid;
     grid-template-columns: 1fr;

@@ -272,16 +272,28 @@ func applyLanguage(conv *LlmConversation, instruction string) {
 
 // resolveLang returns the resolved language name for the instruction.
 func resolveLang(lang string) string {
-	if lang == "" {
+	switch strings.ToLower(strings.TrimSpace(lang)) {
+	case "", "en", "en-us", "en-gb", "english":
 		return "English"
+	case "zh", "zh-cn", "zh-hans", "zh-hans-cn", "chinese", "simplified chinese", "chinese (simplified)":
+		return "Chinese (Simplified)"
+	case "zh-tw", "zh-hant", "zh-hant-tw", "zh-hk", "traditional chinese", "chinese (traditional)":
+		return "Chinese (Traditional)"
+	case "ja", "ja-jp", "japanese":
+		return "Japanese"
+	case "ko", "ko-kr", "korean":
+		return "Korean"
+	case "ru", "ru-ru", "russian":
+		return "Russian"
+	default:
+		return strings.TrimSpace(lang)
 	}
-	return lang
 }
 
 // ApplyLanguage injects a language directive into all system-role messages
 // across MAIN_TASK, PLAN_TASK (if set), and MEMORY_COMPRESSION_TASK.
 func (t *Template) ApplyLanguage(lang string) {
-	instruction := "\n\nAlways respond in " + resolveLang(lang) + "."
+	instruction := languageInstruction(lang)
 	applyLanguage(&t.MainTask, instruction)
 	if t.PlanTask != nil {
 		applyLanguage(t.PlanTask, instruction)
@@ -293,7 +305,7 @@ func (t *Template) ApplyLanguage(lang string) {
 // of the scan template (MAIN_TASK, PLAN_TASK if set, DEDUP_TASK if set,
 // and MEMORY_COMPRESSION_TASK).
 func (t *ScanTemplate) ApplyLanguage(lang string) {
-	instruction := "\n\nAlways respond in " + resolveLang(lang) + "."
+	instruction := languageInstruction(lang)
 	applyLanguage(&t.MainTask, instruction)
 	if t.PlanTask != nil {
 		applyLanguage(t.PlanTask, instruction)
@@ -305,6 +317,10 @@ func (t *ScanTemplate) ApplyLanguage(lang string) {
 		applyLanguage(t.ProjectSummaryTask, instruction)
 	}
 	applyLanguage(&t.MemoryCompressionTask, instruction)
+}
+
+func languageInstruction(lang string) string {
+	return "\n\nAlways respond in " + resolveLang(lang) + ". Use this language consistently for all explanatory text and fields; do not switch languages between findings. Preserve source code, identifiers, file paths, and literals as needed."
 }
 
 func (t *Template) Validate() error {

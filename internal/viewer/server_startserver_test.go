@@ -416,3 +416,25 @@ func TestParseTemplate_ExistingCodeLineNumbers(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTemplate_PendingConfirmation(t *testing.T) {
+	tmpl, err := parseTemplate("session.html")
+	if err != nil {
+		t.Fatalf("parseTemplate: %v", err)
+	}
+	vs := &ViewSession{
+		Summary: SessionSummary{SessionID: "s", CWD: "/p"},
+		Comments: []*ReviewComment{{
+			FilePath:            "a.go",
+			Content:             "The behavior depends on a business rule.",
+			PendingConfirmation: "Confirm whether deleted records should appear in this list.",
+		}},
+	}
+	rr := httptest.NewRecorder()
+	if err := tmpl.Execute(rr, sessionPageData{EncodedRepo: "r", RepoName: "R", Session: vs}); err != nil {
+		t.Fatalf("execute session.html: %v", err)
+	}
+	if !strings.Contains(rr.Body.String(), "Pending confirmation:") || !strings.Contains(rr.Body.String(), "Confirm whether deleted records should appear in this list.") {
+		t.Fatalf("rendered page omitted pending confirmation:\n%s", rr.Body.String())
+	}
+}

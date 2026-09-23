@@ -133,6 +133,9 @@ func parseCommentsInner(args map[string]any, defaultPath string) ([]model.LlmCom
 		if suggestion, ok := obj["suggestion_code"].(string); ok {
 			cm.SuggestionCode = suggestion
 		}
+		if pending, ok := obj["pending_confirmation"].(string); ok {
+			cm.PendingConfirmation = pending
+		}
 		if existing, ok := obj["existing_code"].(string); ok {
 			cm.ExistingCode = existing
 		}

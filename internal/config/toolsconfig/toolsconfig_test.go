@@ -28,6 +28,60 @@ func TestLoad_Default(t *testing.T) {
 	}
 }
 
+func TestDefaultCodeCommentSchemaRequiresConcreteSuggestionAndConfirmationField(t *testing.T) {
+	tools, err := Load("")
+	if err != nil {
+		t.Fatalf("Load default tools: %v", err)
+	}
+	var entry *ToolConfigEntry
+	for i := range tools {
+		if tools[i].Name == "code_comment" {
+			entry = &tools[i]
+			break
+		}
+	}
+	if entry == nil {
+		t.Fatal("default tools do not define code_comment")
+	}
+	var definition struct {
+		Parameters struct {
+			Properties map[string]struct {
+				Items struct {
+					Properties map[string]struct {
+						MinLength int `json:"minLength"`
+					} `json:"properties"`
+					Required []string `json:"required"`
+				} `json:"items"`
+			} `json:"properties"`
+		} `json:"parameters"`
+	}
+	if err := json.Unmarshal(entry.Definition, &definition); err != nil {
+		t.Fatalf("unmarshal code_comment definition: %v", err)
+	}
+	comments, ok := definition.Parameters.Properties["comments"]
+	if !ok {
+		t.Fatal("code_comment schema does not define comments")
+	}
+	for _, field := range []string{"suggestion_code", "pending_confirmation"} {
+		found := false
+		for _, required := range comments.Items.Required {
+			if required == field {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("code_comment schema does not require %q", field)
+		}
+		if _, ok := comments.Items.Properties[field]; !ok {
+			t.Errorf("code_comment schema does not define %q", field)
+		}
+	}
+	if got := comments.Items.Properties["suggestion_code"].MinLength; got < 1 {
+		t.Errorf("suggestion_code minLength = %d, want at least 1", got)
+	}
+}
+
 func TestLoad_CustomFile(t *testing.T) {
 	tmp := t.TempDir()
 	path := filepath.Join(tmp, "tools.json")
