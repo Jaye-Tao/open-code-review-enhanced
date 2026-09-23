@@ -161,7 +161,6 @@ func toLlmComments(comments []*ReviewComment) []model.LlmComment {
 			Path:                c.FilePath,
 			Content:             c.Content,
 			SuggestionCode:      c.SuggestionCode,
-            PendingConfirmation: c.PendingConfirmation,
 			PendingConfirmation: c.PendingConfirmation,
 			ExistingCode:        c.ExistingCode,
 			StartLine:           c.StartLine,

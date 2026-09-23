@@ -331,6 +331,7 @@ type ReviewComment struct {
 	FilePath       string
 	Content        string
 	SuggestionCode string
+	PendingConfirmation string
 	ExistingCode   string
 	StartLine      int
 	EndLine        int
