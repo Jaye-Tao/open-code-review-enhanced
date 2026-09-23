@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/alibaba/open-code-review/internal/session"
 )
 
 func TestParseTemplate_ReposHTML(t *testing.T) {
@@ -833,6 +835,40 @@ func TestRenderTemplate_ToolCallIconIsInlineSVG(t *testing.T) {
 	}
 	if strings.Contains(body, `class="tool-icon"`) {
 		t.Error("individual tool-call rows should not render a duplicate settings icon")
+	}
+}
+
+func TestRenderTemplate_ShowsFailedReviewItemsAndResumeGuidance(t *testing.T) {
+	rr := httptest.NewRecorder()
+	renderTemplate(rr, "session.html", sessionPageData{
+		EncodedRepo: "repo",
+		RepoName:    "MyRepo",
+		Session: &ViewSession{Summary: SessionSummary{
+			SessionID:   "session-123",
+			CWD:         "/test",
+			FailedCount: 1,
+			RunManifest: &session.RunManifest{
+				Input: session.ManifestInput{Mode: session.InputModeRange, RequestedFrom: "main", RequestedHead: "feature"},
+				Coverage: session.Coverage{Failed: []session.CoverageItem{{
+					Path:           "internal/broken.go",
+					Classification: session.FailureProvider,
+					Reason:         "provider request timed out",
+				}}},
+			},
+		}},
+	})
+	body := rr.Body.String()
+	for _, want := range []string{
+		"Failed files",
+		"internal/broken.go",
+		"provider request timed out",
+		"ocr review --from main --to feature --resume session-123",
+		"retries failed files",
+		"provided the reviewed input and rules have not changed",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("rendered session missing %q", want)
+		}
 	}
 }
 
