@@ -78,7 +78,21 @@ for entry in "${PLATFORMS[@]}"; do
     info "Preparing $platform_dir..."
     mkdir -p "$bin_dir"
     cp "$dist_path" "$bin_dir/$dest_name"
-    chmod 755 "$bin_dir/$dest_name" 2>/dev/null || true
+    if [[ "$platform_dir" == darwin-* || "$platform_dir" == linux-* ]]; then
+        chmod 755 "$bin_dir/$dest_name"
+        mode=$(stat -c '%a' "$bin_dir/$dest_name")
+        [ "$mode" = "755" ] || die "Unexpected mode $mode for $bin_dir/$dest_name"
+
+        pack_dir=$(mktemp -d)
+        if ! npm pack "$pkg_dir" --ignore-scripts --pack-destination "$pack_dir" >/dev/null; then
+            rm -rf "$pack_dir"
+            die "Could not pack $platform_dir to verify executable permissions"
+        fi
+        archive=$(find "$pack_dir" -maxdepth 1 -type f -name '*.tgz' -print -quit)
+        archive_mode=$(tar -tvf "$archive" | awk '$NF == "package/bin/'"$dest_name"'" { print $1; exit }')
+        rm -rf "$pack_dir"
+        [ "$archive_mode" = "-rwxr-xr-x" ] || die "Unexpected archived mode '$archive_mode' for $platform_dir/$dest_name"
+    fi
 
     CURRENT_BACKUP=$(mktemp)
     CURRENT_PKG_JSON="$pkg_json"

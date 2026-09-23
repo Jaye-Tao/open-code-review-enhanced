@@ -186,6 +186,9 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Test POSIX installer permissions
+        run: npm run test:install
+
       - name: Publish platform packages
         run: |
           VERSION="${GITHUB_REF_NAME#v}"

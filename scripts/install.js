@@ -28,6 +28,16 @@ function error(msg) {
   console.error(`[ERROR] ${msg}`);
 }
 
+function ensureExecutable(filePath) {
+  if (IS_WINDOWS) return;
+
+  fs.chmodSync(filePath, 0o755);
+  const mode = fs.statSync(filePath).mode & 0o777;
+  if ((mode & 0o111) === 0) {
+    throw new Error(`Binary is not executable after chmod: ${filePath}`);
+  }
+}
+
 function detectPlatform() {
   let os = process.platform;
   let arch = process.arch;
@@ -159,6 +169,7 @@ async function main() {
 
   const existing = resolveNativeBinary();
   if (existing && existing.fromPlatformPkg) {
+    ensureExecutable(existing.path);
     info("Binary provided by platform package, skipping download.");
     info(`  ${existing.path}`);
     return;
@@ -195,7 +206,7 @@ async function main() {
 
   await downloadBinary(downloadUrl, binaryDest);
   if (!IS_WINDOWS) {
-    fs.chmodSync(binaryDest, 0o755);
+    ensureExecutable(binaryDest);
   }
 
   if (config.checksumPattern) {
@@ -268,5 +279,6 @@ if (require.main === module) {
     downloadText,
     downloadBinary,
     computeChecksum,
+    ensureExecutable,
   };
 }
