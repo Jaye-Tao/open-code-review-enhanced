@@ -376,7 +376,7 @@ func TestRenderTemplate_SessionsCompareLink(t *testing.T) {
 			renderTemplate(rr, "sessions.html", sessionsData{
 				EncodedRepo: "myrepo",
 				RepoName:    "MyProject",
-				审核会话    tt.sessions,
+				Sessions:    tt.sessions,
 			})
 			if rr.Code != http.StatusOK {
 				t.Fatalf("status = %d, want 200", rr.Code)
@@ -410,6 +410,17 @@ func TestNewMux_RouteDispatch(t *testing.T) {
 		contains []string
 		absent   []string
 	}{
+		{
+			name: "HTML comparison export is standalone", target: "/r/myrepo/compare/export.html?before=s1&after=s2",
+			status:   http.StatusOK,
+			contains: []string{"<style>", "<script>", "class=\"compare-page\"", "新增问题"},
+			absent:   []string{"/static/style.css", "/static/compare.js", "/r/myrepo/compare/export.html"},
+		},
+		{
+			name: "Markdown comparison export", target: "/r/myrepo/compare/export.md?before=s1&after=s2",
+			status:   http.StatusOK,
+			contains: []string{"# 会话对比", "## New", "## Persisting", "| 状态 | 数量 |"},
+		},
 		{
 			name: "compare wins over the sessionID wildcard", target: "/r/myrepo/compare?before=s1&after=s2",
 			status: http.StatusOK,

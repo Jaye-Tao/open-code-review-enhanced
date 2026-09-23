@@ -136,8 +136,19 @@ func newMux(root string) *http.ServeMux {
 	})
 	mux.HandleFunc("GET /r/{repo}/compare/export.html", func(w http.ResponseWriter, r *http.Request) {
 		repo := r.PathValue("repo")
-		if unsafeSegment(repo) { http.Error(w, "invalid repo path", http.StatusBadRequest); return }
+		if unsafeSegment(repo) {
+			http.Error(w, "invalid repo path", http.StatusBadRequest)
+			return
+		}
 		handleCompareExport(w, r, root, repo)
+	})
+	mux.HandleFunc("GET /r/{repo}/compare/export.md", func(w http.ResponseWriter, r *http.Request) {
+		repo := r.PathValue("repo")
+		if unsafeSegment(repo) {
+			http.Error(w, "invalid repo path", http.StatusBadRequest)
+			return
+		}
+		handleCompareMarkdownExport(w, r, root, repo)
 	})
 	mux.HandleFunc("GET /r/{repo}/{sessionID}", func(w http.ResponseWriter, r *http.Request) {
 		repo := r.PathValue("repo")
@@ -339,18 +350,18 @@ func numberedCodeLines(code string, startLine, endLine int) []codeLine {
 
 func parseTemplate(name string) (*template.Template, error) {
 	funcMap := template.FuncMap{
-		"formatDuration": formatDuration,
-		"formatTime":     formatTime,
-		"truncate":       truncateText,
-		"taskLabel":      func(t TaskType) string { return taskLabel(t) },
-		"modeLabel":      modeLabel,
-		"statusLabel":    statusLabel,
-		"severityLabel":  severityLabel,
-		"categoryLabel":  categoryLabel,
-		"formatNumber":   formatNumber,
-		"icon":           inlineIcon,
-		"dict":           dictKV,
-		"add":            func(a, b int) int { return a + b },
+		"formatDuration":  formatDuration,
+		"formatTime":      formatTime,
+		"truncate":        truncateText,
+		"taskLabel":       func(t TaskType) string { return taskLabel(t) },
+		"modeLabel":       modeLabel,
+		"statusLabel":     statusLabel,
+		"severityLabel":   severityLabel,
+		"categoryLabel":   categoryLabel,
+		"formatNumber":    formatNumber,
+		"icon":            inlineIcon,
+		"dict":            dictKV,
+		"add":             func(a, b int) int { return a + b },
 		"progressPercent": func(s SessionSummary) int { return s.ProgressPercent() },
 		"countLabel": func(n int, singular, plural string) string {
 			if n == 1 {
