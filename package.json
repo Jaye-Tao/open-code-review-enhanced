@@ -1,6 +1,6 @@
 {
   "name": "open-code-review-enhanced",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "OpenCodeReview CLI — AI-powered code review tool",
   "bin": {
     "ocr": "bin/ocr.js"
@@ -13,7 +13,7 @@
     "scripts/platform.js",
     "prompts/open-code-review-background.md",
     "imgs/",
-    "docs/release-notes-1.0.2.md"
+    "docs/release-notes-1.0.3.md"
   ],
   "scripts": {
     "postinstall": "node scripts/install.js",
@@ -35,12 +35,12 @@
     "checksumPattern": "https://github.com/Jaye-Tao/open-code-review-enhanced/releases/download/v{version}/sha256sum.txt"
   },
   "optionalDependencies": {
-    "open-code-review-enhanced-darwin-arm64": "1.0.2",
-    "open-code-review-enhanced-darwin-x64": "1.0.2",
-    "open-code-review-enhanced-linux-arm64": "1.0.2",
-    "open-code-review-enhanced-linux-x64": "1.0.2",
-    "open-code-review-enhanced-win32-arm64": "1.0.2",
-    "open-code-review-enhanced-win32-x64": "1.0.2"
+    "open-code-review-enhanced-darwin-arm64": "1.0.3",
+    "open-code-review-enhanced-darwin-x64": "1.0.3",
+    "open-code-review-enhanced-linux-arm64": "1.0.3",
+    "open-code-review-enhanced-linux-x64": "1.0.3",
+    "open-code-review-enhanced-win32-arm64": "1.0.3",
+    "open-code-review-enhanced-win32-x64": "1.0.3"
   },
   "engines": {
     "node": ">=14"

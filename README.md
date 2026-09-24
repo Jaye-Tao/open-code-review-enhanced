@@ -223,12 +223,12 @@ This project exists thanks to all the people who contribute. See [CONTRIBUTING.m
 
 [Apache-2.0](LICENSE) — Copyright 2026 Alibaba
 
-## Version 1.0.2
+## Version 1.0.3
 
-Adds standalone HTML/Markdown comparison exports and failed-file details with resume guidance; preserves pending confirmations in review output and the dashboard; improves language consistency, comparison layouts, and POSIX executable permissions.
+Adds the `--default-prompt` flag for the bundled Chinese review prompt and live review progress in the viewer; updates the main npm package and all six platform packages.
 
-[1.0.2](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.2/docs/release-notes-1.0.2.md)
+[1.0.3](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.3/docs/release-notes-1.0.3.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.2
+npm install -g open-code-review-enhanced@1.0.3
 ```
