@@ -184,6 +184,7 @@ Beyond the common flags above, `ocr review` exposes a few groups of controls. Ru
 
 - `--exclude '<patterns>'` — comma-separated gitignore-style patterns (for example `--exclude '**/generated/*,**/testdata/*'`), merged with `rule.json` excludes.
 - `--background-file <path>` — read review context from a Markdown file. Takes precedence over `--background`.
+- `--default-prompt` — use the bundled Chinese review background without resolving its file path; may be combined with `--background`.
 
 **Output**
 

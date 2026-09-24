@@ -119,6 +119,7 @@ ocr r      [flags]   (alias)
 | `--audience <who>` | — | `human` | `human`은 진행 상황을 흘려보냅니다(`--format`이 `json`/`sarif`이면 stderr로 보내 stdout이 파싱 가능한 문서 하나로 유지됩니다). `agent`는 진행 상황을 아예 끄고 최종 요약이나 JSON만 출력합니다. |
 | `--background <text>` | `-b` | — | plan과 main 프롬프트에 넣을 요구사항 또는 비즈니스 맥락(선택). |
 | `--background-file <path>` | `-B` | — | 리뷰 배경으로 쓸 Markdown 파일 경로. `--background`와 함께 지정하면 이쪽이 우선합니다. |
+| `--default-prompt` | — | `false` | 파일 경로를 조회하지 않고 기본 제공 리뷰 프롬프트를 사용합니다. `--background`와 함께 사용할 수 있지만 `--background-file`과는 함께 사용할 수 없습니다. |
 | `--exclude <patterns>` | — | — | 제외할 gitignore 형식 패턴(쉼표 구분). `rule.json`의 `excludes` 항목과 합쳐집니다. |
 | `--concurrency <n>` | — | `8` | 병렬로 리뷰할 서브태스크의 최대 개수. |
 | `--timeout <minutes>` | — | `15` | 서브태스크당 제한 시간. `0`이면 타임아웃을 끕니다. effort 라운드 수에 비례해 선형 확장됩니다(예: low/medium/high에서 15/30/45분). |

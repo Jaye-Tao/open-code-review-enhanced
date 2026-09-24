@@ -116,6 +116,16 @@ npm install -g open-code-review-enhanced
 
 安装后，`ocr` 命令即可全局使用。
 
+#### 内置审查提示词
+
+npm 包包含可选的简体中文审查背景提示词。使用 `--default-prompt` 可直接启用，无需获取文件路径：
+
+```bash
+ocr review --default-prompt
+```
+
+也可以使用 `--background` 追加本次任务的业务背景。原有的 `--background-file "$(ocr background-path)"` 写法仍然兼容。
+
 其他安装方式（安装脚本、GitHub Release 二进制、源码构建），详见[安装指南](https://open-codereview.ai/docs/installation)。
 
 #### 快速开始

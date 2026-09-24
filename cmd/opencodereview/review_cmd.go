@@ -40,6 +40,7 @@ type reviewOptions struct {
 	outputPath            string
 	background            string
 	backgroundFile        string
+	defaultPrompt         bool
 	provider              string
 	model                 string
 	concurrency           int
@@ -93,7 +94,10 @@ var reviewCmd = &cobra.Command{
 
   # Provide requirement/business context inline or from a Markdown file
   ocr review --background "Adding rate limiting to the login API"
-  ocr review --background-file ./docs/requirements.md`,
+  ocr review --background-file ./docs/requirements.md
+
+  # Use the bundled review prompt
+  ocr review --default-prompt`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := validateReviewOptions(&reviewOpts); err != nil {
 			return err
@@ -145,7 +149,12 @@ func executeReviewContext(ctx context.Context, opts reviewOptions) (retErr error
 		return err
 	}
 
-	bg, err := resolveBackground(cc.RepoDir, opts.background, opts.backgroundFile, opts.commit)
+	var bg string
+	if opts.defaultPrompt {
+		bg, err = resolveBundledBackground(opts.background)
+	} else {
+		bg, err = resolveBackground(cc.RepoDir, opts.background, opts.backgroundFile, opts.commit)
+	}
 	if err != nil {
 		return err
 	}

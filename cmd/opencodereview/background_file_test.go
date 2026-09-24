@@ -224,6 +224,27 @@ func TestSelectBackground(t *testing.T) {
 	})
 }
 
+func TestResolveBundledBackground(t *testing.T) {
+	got, err := resolveBundledBackground("")
+	if err != nil {
+		t.Fatalf("resolveBundledBackground: %v", err)
+	}
+	if !strings.Contains(got, "请使用简体中文完成审查") { // allow-non-english: verify the bundled Chinese review prompt
+		t.Fatalf("bundled background does not contain the review prompt: %q", got)
+	}
+	if !strings.HasPrefix(got, backgroundOpenTag+"\n") || !strings.HasSuffix(got, "\n"+backgroundCloseTag) {
+		t.Fatalf("bundled background is not wrapped: %q", got)
+	}
+
+	withInline, err := resolveBundledBackground("Check the authentication flow.")
+	if err != nil {
+		t.Fatalf("resolveBundledBackground with inline context: %v", err)
+	}
+	if !strings.HasSuffix(withInline, "Check the authentication flow.") {
+		t.Fatalf("inline context was not appended: %q", withInline)
+	}
+}
+
 func TestLoadBackgroundFileSoftLimit(t *testing.T) {
 	// Just above the soft limit but below the hard size limit: must succeed.
 	content := strings.Repeat("a", backgroundSoftLimit+100)

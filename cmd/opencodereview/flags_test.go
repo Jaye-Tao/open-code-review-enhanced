@@ -24,6 +24,23 @@ func TestParseReviewFlagsBackgroundFile(t *testing.T) {
 	}
 }
 
+func TestParseReviewFlagsDefaultPrompt(t *testing.T) {
+	opts, err := parseReviewFlags([]string{"--commit", "abc123", "--default-prompt"})
+	if err != nil {
+		t.Fatalf("parseReviewFlags: %v", err)
+	}
+	if !opts.defaultPrompt {
+		t.Fatal("defaultPrompt = false, want true")
+	}
+}
+
+func TestParseReviewFlagsDefaultPromptConflictsWithBackgroundFile(t *testing.T) {
+	_, err := parseReviewFlags([]string{"--default-prompt", "--background-file", "review.md"})
+	if err == nil {
+		t.Fatal("expected --default-prompt and --background-file to conflict")
+	}
+}
+
 func TestParseReviewFlagsModelOverride(t *testing.T) {
 	opts, err := parseReviewFlags([]string{"--model", "claude-opus-4-6"})
 	if err != nil {

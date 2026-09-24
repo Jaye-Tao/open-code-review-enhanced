@@ -116,6 +116,16 @@ npm install -g open-code-review-enhanced
 
 インストール後、`ocr`コマンドがグローバルに利用可能になります。
 
+#### 組み込みレビュープロンプト
+
+npm パッケージには任意で使える中国語のレビュー背景プロンプトが含まれています。`--default-prompt` を指定すると、パスを取得せずに直接有効化できます。
+
+```bash
+ocr review --default-prompt
+```
+
+`--background` で今回のタスク固有のコンテキストを追加できます。既存の `--background-file "$(ocr background-path)"` 形式も引き続き利用できます。
+
 その他のインストール方法（インストールスクリプト、GitHub Release バイナリ、ソースビルド）については、[インストールガイド](https://open-codereview.ai/docs/installation)を参照してください。
 
 #### クイックスタート

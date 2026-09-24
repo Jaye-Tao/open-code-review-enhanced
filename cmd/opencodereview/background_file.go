@@ -4,6 +4,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,12 @@ import (
 	"strings"
 	"unicode"
 )
+
+// bundledBackground is the optional review background shipped inside the
+// native binary. It is selected only when --default-prompt is supplied.
+//
+//go:embed default_background.md
+var bundledBackground []byte
 
 const (
 	backgroundSoftLimit    = 2000
@@ -61,6 +68,14 @@ func resolveBackground(repoDir, inline, backgroundFile, commit string) (string, 
 	return inline, nil
 }
 
+func resolveBundledBackground(inline string) (string, error) {
+	fileBg, err := loadBackgroundContent(string(bundledBackground), "bundled default prompt")
+	if err != nil {
+		return "", err
+	}
+	return selectBackground(inline, fileBg), nil
+}
+
 func loadBackgroundFile(path string) (string, error) {
 	info, err := os.Stat(path)
 	if err != nil {
@@ -80,16 +95,19 @@ func loadBackgroundFile(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read background file %q: %w", path, err)
 	}
+	return loadBackgroundContent(string(raw), path)
+}
 
-	cleaned := sanitizeMarkdown(string(raw))
+func loadBackgroundContent(raw, source string) (string, error) {
+	cleaned := sanitizeMarkdown(raw)
 	if cleaned == "" {
-		return "", fmt.Errorf("background file %q is empty after sanitisation", path)
+		return "", fmt.Errorf("background %q is empty after sanitisation", source)
 	}
 
 	if strings.Contains(cleaned, backgroundOpenTag) || strings.Contains(cleaned, backgroundCloseTag) {
 		return "", fmt.Errorf(
-			"background file %q must not contain the reserved delimiters %q or %q",
-			path, backgroundOpenTag, backgroundCloseTag,
+			"background %q must not contain the reserved delimiters %q or %q",
+			source, backgroundOpenTag, backgroundCloseTag,
 		)
 	}
 
@@ -98,12 +116,14 @@ func loadBackgroundFile(path string) (string, error) {
 	// character count misleading.
 	if n := len([]rune(cleaned)); n > backgroundHardLimit {
 		return "", fmt.Errorf(
-			"background content is %d characters, exceeding the hard limit of %d (aborting)",
+			"background %q is %d characters, exceeding the hard limit of %d (aborting)",
+			source,
 			n, backgroundHardLimit,
 		)
 	} else if n > backgroundSoftLimit {
 		fmt.Fprintf(os.Stderr,
-			"[ocr] --background-file content is %d characters, exceeding the recommended %d (continuing but review quality might be impacted)\n",
+			"[ocr] background %q is %d characters, exceeding the recommended %d (continuing but review quality might be impacted)\n",
+			source,
 			n, backgroundSoftLimit,
 		)
 	}

@@ -116,6 +116,16 @@ npm install -g open-code-review-enhanced
 
 설치 후 `ocr` 명령을 전역에서 사용할 수 있습니다.
 
+#### 기본 제공 리뷰 프롬프트
+
+npm 패키지에는 선택적으로 사용할 수 있는 중국어 리뷰 배경 프롬프트가 포함되어 있습니다. `--default-prompt`를 지정하면 경로를 조회하지 않고 바로 활성화할 수 있습니다.
+
+```bash
+ocr review --default-prompt
+```
+
+`--background`로 이번 작업의 컨텍스트를 추가할 수 있습니다. 기존의 `--background-file "$(ocr background-path)"` 형식도 계속 지원됩니다.
+
 기타 설치 방법(설치 스크립트, GitHub Release binary, 소스 빌드)은 [설치 가이드](https://open-codereview.ai/docs/installation)를 참조하세요.
 
 #### Quick Start
