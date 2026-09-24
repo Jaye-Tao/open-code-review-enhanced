@@ -1248,15 +1248,30 @@ func (a *Agent) registerCoverage(diffs []model.Diff) error {
 	if b == nil {
 		return nil
 	}
+	selected := 0
+	selectedIDs := make(map[string]struct{}, len(diffs))
 	for _, d := range diffs {
 		if d.IsDeleted {
 			continue
 		}
+		itemID := a.manifestItemID(d)
+		if _, duplicate := selectedIDs[itemID]; duplicate {
+			continue
+		}
+		selectedIDs[itemID] = struct{}{}
 		if err := b.RegisterSelected(a.coverageItem(d)); err != nil {
 			return err
 		}
+		selected++
 	}
-	return b.SealSelected()
+	if err := b.SealSelected(); err != nil {
+		return err
+	}
+	// The manifest is intentionally frozen only at the end, but the selected
+	// count is already stable here. Persist it before concurrent dispatch starts
+	// so the viewer has a denominator for live progress.
+	a.session.RecordReviewProgress(selected)
+	return nil
 }
 
 // finalizeManifest freezes the run's coverage builder and stores the immutable

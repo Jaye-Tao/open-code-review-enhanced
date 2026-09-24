@@ -462,6 +462,47 @@ func TestPeekSessionProgressDoesNotInventActiveDenominator(t *testing.T) {
 	}
 }
 
+func TestPeekSessionProgressUsesPersistedActiveDenominator(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-progress.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 4 || summary.SelectedCount != 4 {
+		t.Fatalf("active denominator = file count %d, selected count %d; want 4/4", summary.FileCount, summary.SelectedCount)
+	}
+	if summary.CompletedCount != 1 || summary.FilesReadCount != 1 {
+		t.Fatalf("active counts = completed %d, read %d; want 1/1", summary.CompletedCount, summary.FilesReadCount)
+	}
+	if got := summary.ProgressPercent(); got != 25 {
+		t.Fatalf("active progress = %d, want 25", got)
+	}
+}
+
+func TestPeekSessionProgressKeepsFrozenDenominator(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-progress-frozen.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4}`,
+		`{"type":"review_progress","selected_count":8}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 4 || summary.SelectedCount != 4 || summary.ProgressPercent() != 25 {
+		t.Fatalf("progress denominator changed: file count %d, selected count %d, percent %d", summary.FileCount, summary.SelectedCount, summary.ProgressPercent())
+	}
+}
+
 func TestPeekSessionIgnoresReviewTypeTextInOtherRecords(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "text.jsonl")

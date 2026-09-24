@@ -83,7 +83,8 @@ func DiscoverRepos(root string) ([]RepoInfo, error) {
 	return repos, nil
 }
 
-// SessionSummary is built from session_start and session_end records.
+// SessionSummary is built from session metadata, live progress/checkpoint
+// records, and the optional terminal session_end record.
 type SessionSummary struct {
 	SessionID     string
 	Timestamp     time.Time
@@ -100,18 +101,19 @@ type SessionSummary struct {
 	// FilesReadCount is the number of file-level review records observed while
 	// loading the session. It is kept separate from findings because a clean
 	// file still contributes to review progress.
-	FilesReadCount int
-	LLMFailures    int
-	CommentCount   int
-	Aborted        bool
-	Legacy         bool
-	TerminalState  string
-	SelectedCount  int
-	CompletedCount int
-	ReusedCount    int
-	FailedCount    int
-	WaivedCount    int
-	RunManifest    *session.RunManifest
+	FilesReadCount   int
+	LLMFailures      int
+	CommentCount     int
+	Aborted          bool
+	Legacy           bool
+	TerminalState    string
+	SelectedCount    int
+	CompletedCount   int
+	ReusedCount      int
+	FailedCount      int
+	WaivedCount      int
+	RunManifest      *session.RunManifest
+	hasProgressTotal bool
 }
 
 func (s SessionSummary) ProgressPercent() int {
@@ -133,6 +135,12 @@ func (s SessionSummary) ProgressPercent() int {
 		}
 		return done * 100 / total
 	}
+	if s.hasProgressTotal {
+		if s.SelectedCount == 0 {
+			return 0
+		}
+		return min(s.FilesReadCount, s.SelectedCount) * 100 / s.SelectedCount
+	}
 
 	// Legacy sessions have no frozen denominator. Once they have ended,
 	// files_reviewed is the best available fallback; checkpoint records refine
@@ -144,6 +152,11 @@ func (s SessionSummary) ProgressPercent() int {
 		total = s.SelectedCount
 	}
 	if total == 0 {
+		if s.Aborted {
+			// An active session without a persisted denominator cannot yield a
+			// meaningful percentage. Item records alone must not turn into 100%.
+			return 0
+		}
 		total = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
 	}
 	if total == 0 {
@@ -247,13 +260,16 @@ func peekSession(path string) (SessionSummary, error) {
 			}
 			metadataRead = true
 		}
+		if typ == "review_progress" {
+			applyReviewProgress(&summary, rec)
+		}
 
 		// Count only actual terminal item records. Searching the raw JSON for a
 		// type name would mistake an LLM response containing that text for a
 		// completed file and inflate the percentage.
 		if isReviewItemRecord(typ) {
 			if addReviewedFile(readFiles, rec) {
-				summary.FilesReadCount++
+				countReviewItem(&summary, typ)
 			}
 			if comments, ok := rec["comments"].([]any); ok {
 				summary.CommentCount += len(comments)
@@ -271,7 +287,7 @@ func peekSession(path string) (SessionSummary, error) {
 	}
 	// A running session has no stable denominator. Only repair a completed
 	// legacy session whose end record omitted (or under-counted) files_reviewed.
-	if !summary.Aborted && summary.RunManifest == nil && summary.FileCount < summary.FilesReadCount {
+	if !summary.Aborted && summary.RunManifest == nil && !summary.hasProgressTotal && summary.FileCount < summary.FilesReadCount {
 		summary.FileCount = summary.FilesReadCount
 	}
 	return summary, readErr
@@ -299,6 +315,30 @@ func addReviewedFile(seen map[string]struct{}, rec map[string]any) bool {
 	}
 	seen[path] = struct{}{}
 	return true
+}
+
+func applyReviewProgress(summary *SessionSummary, rec map[string]any) {
+	v, ok := rec["selected_count"].(float64)
+	if !ok || v < 0 || int(v) < 0 || v != float64(int(v)) || summary.hasProgressTotal || summary.RunManifest != nil {
+		return
+	}
+	// The denominator is frozen before dispatch and must not change as more
+	// conversations (including virtual grouping/summary tasks) are recorded.
+	summary.SelectedCount = int(v)
+	summary.FileCount = int(v)
+	summary.hasProgressTotal = true
+}
+
+func countReviewItem(summary *SessionSummary, typ string) {
+	summary.FilesReadCount++
+	switch typ {
+	case "review_item_done":
+		summary.CompletedCount++
+	case "review_item_reused":
+		summary.ReusedCount++
+	case "review_item_failed":
+		summary.FailedCount++
+	}
 }
 
 // readJSONLLines visits each physical JSONL record without bufio.Scanner's
@@ -628,6 +668,9 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 				vs.Summary.DiffCommit = v
 			}
 
+		case "review_progress":
+			applyReviewProgress(&vs.Summary, rec)
+
 		case "llm_request":
 			fp, _ := rec["filePath"].(string)
 			tt, _ := rec["taskType"].(string)
@@ -771,7 +814,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 
 		case "review_item_done", "review_item_reused", "review_item_failed":
 			if addReviewedFile(readFiles, rec) {
-				vs.Summary.FilesReadCount++
+				countReviewItem(&vs.Summary, typ)
 			}
 			if typ == "review_item_failed" {
 				break
@@ -822,7 +865,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 			applySessionEnd(&vs.Summary, rec)
 		}
 	})
-	if !vs.Summary.Aborted && vs.Summary.RunManifest == nil && vs.Summary.FileCount < vs.Summary.FilesReadCount {
+	if !vs.Summary.Aborted && vs.Summary.RunManifest == nil && !vs.Summary.hasProgressTotal && vs.Summary.FileCount < vs.Summary.FilesReadCount {
 		vs.Summary.FileCount = vs.Summary.FilesReadCount
 	}
 
@@ -926,7 +969,9 @@ func applySessionEnd(summary *SessionSummary, rec map[string]any) {
 	}
 	if summary.RunManifest == nil {
 		summary.Legacy = true
-		summary.FileCount = len(summary.FilesReviewed)
+		if !summary.hasProgressTotal {
+			summary.FileCount = len(summary.FilesReviewed)
+		}
 	}
 }
 

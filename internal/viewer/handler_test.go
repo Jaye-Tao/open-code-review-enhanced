@@ -145,6 +145,49 @@ func TestHandleSessions_NoCWD(t *testing.T) {
 	}
 }
 
+func TestHandleSessionProgress(t *testing.T) {
+	root := t.TempDir()
+	repoDir := filepath.Join(root, "repo")
+	if err := os.MkdirAll(repoDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeJSONL(t, filepath.Join(repoDir, "active.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":2}`,
+		`{"type":"review_item_done","filePath":"main.go","comments":[]}`)
+
+	req := httptest.NewRequest("GET", "/r/repo/active/progress", nil)
+	rr := httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "active")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var payload struct {
+		Percent   int  `json:"percent"`
+		Total     int  `json:"total"`
+		Completed int  `json:"completed"`
+		Active    bool `json:"active"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode progress response: %v", err)
+	}
+	if payload.Percent != 50 || payload.Total != 2 || payload.Completed != 1 || !payload.Active {
+		t.Fatalf("progress payload = %+v, want 50%%, 1/2, active", payload)
+	}
+
+	writeJSONL(t, filepath.Join(repoDir, "active.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":1}`,
+		`{"type":"review_item_done","filePath":"main.go","comments":[]}`,
+		`{"type":"session_end","files_reviewed":["main.go"]}`)
+	rr = httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "active")
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"active":false`) || !strings.Contains(rr.Body.String(), `"percent":100`) {
+		t.Fatalf("completed progress response = %s", rr.Body.String())
+	}
+}
+
 func TestHandleSessions_ErrorOnBadDir(t *testing.T) {
 	root := t.TempDir()
 	req := httptest.NewRequest("GET", "/r/missing", nil)

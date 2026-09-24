@@ -4,6 +4,7 @@
 package viewer
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"net/http"
@@ -14,6 +15,25 @@ import (
 	"github.com/alibaba/open-code-review/internal/model"
 	"github.com/alibaba/open-code-review/internal/session"
 )
+
+func handleSessionProgress(w http.ResponseWriter, r *http.Request, root, repo, sessionID string) {
+	path := filepath.Join(root, repo, sessionID+".jsonl")
+	summary, err := peekSession(path)
+	if err != nil {
+		http.Error(w, "session not found", http.StatusNotFound)
+		return
+	}
+	payload := map[string]any{
+		"percent": summary.ProgressPercent(),
+		"total": summary.SelectedCount,
+		"completed": summary.CompletedCount,
+		"reused": summary.ReusedCount,
+		"failed": summary.FailedCount,
+		"active": summary.Aborted,
+	}
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(w).Encode(payload)
+}
 
 func handleCompareExport(w http.ResponseWriter, r *http.Request, root, repo string) {
 	compareOutput(w, r, root, repo, "html")
