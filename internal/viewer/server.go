@@ -150,6 +150,7 @@ func newMux(root string) *http.ServeMux {
 	})
 
 	for pattern, handler := range map[string]func(http.ResponseWriter, *http.Request, string, string, string){
+		"GET /r/{repo}/{sessionID}/progress":  handleSessionProgress,
 		"GET /r/{repo}/{sessionID}/export.md": handleMarkdown,
 		"DELETE /r/{repo}/{sessionID}/delete": handleDeleteSession,
 	} {

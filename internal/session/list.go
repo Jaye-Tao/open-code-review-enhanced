@@ -91,6 +91,7 @@ type summaryRecord struct {
 	SourceModel     string          `json:"source_model"`
 	TargetProvider  string          `json:"target_provider"`
 	TargetModel     string          `json:"target_model"`
+	SelectedCount   int             `json:"selected_count"`
 }
 
 // SessionsDir returns the on-disk directory that holds JSONL session files
@@ -254,6 +255,10 @@ func applyRecordToSummary(s *Summary, rec summaryRecord) {
 			TargetProvider: rec.TargetProvider,
 			TargetModel:    rec.TargetModel,
 		}
+	case "review_progress":
+		if rec.SelectedCount >= 0 {
+			s.SelectedFiles = rec.SelectedCount
+		}
 	case "review_item_done":
 		s.CompletedFiles++
 		s.TotalComments += countCommentsRaw(rec.Comments)
@@ -279,7 +284,9 @@ func applyRecordToSummary(s *Summary, rec summaryRecord) {
 			if s.CompletedFiles == 0 && s.ReusedFiles == 0 && s.FailedFiles == 0 && len(rec.FilesReviewed) > 0 {
 				s.CompletedFiles = len(rec.FilesReviewed)
 			}
-			s.SelectedFiles = s.CompletedFiles + s.ReusedFiles + s.FailedFiles
+			if s.SelectedFiles == 0 {
+				s.SelectedFiles = s.CompletedFiles + s.ReusedFiles + s.FailedFiles
+			}
 		}
 		if !ts.IsZero() {
 			s.EndTime = ts

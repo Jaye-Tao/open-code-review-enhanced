@@ -186,6 +186,31 @@ func (jw *jsonlWriter) WriteReviewItemFailed(filePath, oldPath, newPath, fingerp
 	return jw.writeReviewItemRecord("review_item_failed", filePath, oldPath, newPath, fingerprint, "", errorMsg, nil)
 }
 
+// WriteReviewProgress records the frozen number of selected items before any
+// item is dispatched. The item records that follow provide the live numerator;
+// keeping the denominator in its own small record lets readers calculate
+// progress while the session is still running.
+func (jw *jsonlWriter) WriteReviewProgress(selected int) string {
+	uuid := generateUUID()
+
+	jw.mu.Lock()
+	defer jw.mu.Unlock()
+	rec := map[string]any{
+		"uuid":           uuid,
+		"parentUuid":     jw.lastUUID,
+		"type":           "review_progress",
+		"sessionId":      jw.sessionID,
+		"timestamp":      time.Now().UTC().Format(time.RFC3339),
+		"selected_count": selected,
+	}
+	jw.writeRecordLocked(rec)
+	if jw.writer != nil {
+		jw.writer.Flush()
+	}
+	jw.lastUUID = uuid
+	return uuid
+}
+
 func (jw *jsonlWriter) writeReviewItemRecord(recordType, filePath, oldPath, newPath, fingerprint, sourceSessionID, errorMsg string, comments []model.LlmComment) string {
 	uuid := generateUUID()
 

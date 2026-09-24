@@ -312,6 +312,19 @@ func (sh *SessionHistory) RecordReviewItemFailed(filePath, oldPath, newPath, fin
 	}
 }
 
+// RecordReviewProgress persists the selected-item count once the run's
+// denominator has been frozen. It is deliberately separate from the final
+// manifest so the viewer can show progress for an active session, including
+// legacy full-scan sessions that have no manifest.
+func (sh *SessionHistory) RecordReviewProgress(selected int) {
+	if sh == nil || selected < 0 {
+		return
+	}
+	if p := sh.persist; p != nil {
+		p.WriteReviewProgress(selected)
+	}
+}
+
 // Finalize marks the session as complete, sets the end time, and persists the
 // final summary record. When a frozen manifest was stored via SetFinalManifest
 // it is embedded into session_end as run_manifest, which is the last physical

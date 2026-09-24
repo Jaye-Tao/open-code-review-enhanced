@@ -349,6 +349,9 @@ func (a *Agent) Run(ctx context.Context) ([]model.LlmComment, error) {
 		}
 		return []model.LlmComment{}, nil
 	}
+	// The selected scan set is stable before dispatch. Persist its size so the
+	// viewer can calculate live progress from the per-file checkpoint records.
+	a.session.RecordReviewProgress(reviewable)
 
 	// Pre-run cost projection so users aren't surprised by a large scan.
 	est := estimateCost(a.items, a.planEnabled(), a.dedupEnabled(), a.summaryEnabled())

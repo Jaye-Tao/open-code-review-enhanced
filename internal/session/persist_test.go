@@ -445,6 +445,28 @@ func TestReviewItemResumeRoundTrip(t *testing.T) {
 	}
 }
 
+func TestReviewProgressIsFlushedBeforeSessionEnd(t *testing.T) {
+	repoDir := t.TempDir()
+	sh := New(repoDir, "feature", "new-model", SessionOptions{ReviewMode: ReviewModeRange})
+	t.Cleanup(func() { _ = sh.Finalize() })
+	sh.RecordReviewProgress(4)
+
+	records := readJSONLRecords(t, sessionJSONLPath(t, repoDir, sh.SessionID))
+	var progress map[string]any
+	for _, record := range records {
+		if record["type"] == "review_progress" {
+			progress = record
+			break
+		}
+	}
+	if progress == nil {
+		t.Fatal("missing review_progress record")
+	}
+	if got, ok := progress["selected_count"].(float64); !ok || got != 4 {
+		t.Fatalf("selected_count = %v, want 4", progress["selected_count"])
+	}
+}
+
 func TestResumeStateValidateOptionsRejectsMismatchedMode(t *testing.T) {
 	state := &ResumeState{
 		SessionID:  "s1",
