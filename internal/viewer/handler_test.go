@@ -186,6 +186,15 @@ func TestHandleSessionProgress(t *testing.T) {
 	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"active":false`) || !strings.Contains(rr.Body.String(), `"percent":100`) {
 		t.Fatalf("completed progress response = %s", rr.Body.String())
 	}
+
+	writeJSONL(t, filepath.Join(repoDir, "legacy-active.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_item_done","filePath":"main.go","comments":[{"content":"finding"}]}`)
+	rr = httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "legacy-active")
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"total":1`) || !strings.Contains(rr.Body.String(), `"percent":100`) {
+		t.Fatalf("legacy active progress response = %s", rr.Body.String())
+	}
 }
 
 func TestHandleSessions_ErrorOnBadDir(t *testing.T) {

@@ -224,6 +224,7 @@ func peekSession(path string) (SessionSummary, error) {
 	summary := SessionSummary{Aborted: true}
 	var lastLine []byte
 	readFiles := make(map[string]struct{})
+	requestedFiles := make(map[string]struct{})
 	metadataRead := false
 	readErr := readJSONLLines(f, func(line []byte) {
 		lastLine = append([]byte(nil), line...)
@@ -263,6 +264,11 @@ func peekSession(path string) (SessionSummary, error) {
 		if typ == "review_progress" {
 			applyReviewProgress(&summary, rec)
 		}
+		if typ == "llm_request" {
+			if path, ok := rec["filePath"].(string); ok && path != "" {
+				requestedFiles[path] = struct{}{}
+			}
+		}
 
 		// Count only actual terminal item records. Searching the raw JSON for a
 		// type name would mistake an LLM response containing that text for a
@@ -289,6 +295,16 @@ func peekSession(path string) (SessionSummary, error) {
 	// legacy session whose end record omitted (or under-counted) files_reviewed.
 	if !summary.Aborted && summary.RunManifest == nil && !summary.hasProgressTotal && summary.FileCount < summary.FilesReadCount {
 		summary.FileCount = summary.FilesReadCount
+	}
+	if summary.Aborted && summary.RunManifest == nil && !summary.hasProgressTotal && summary.FileCount == 0 {
+		// Older sessions did not persist review_progress. Request records still
+		// provide a stable denominator while the review is running.
+		summary.FileCount = len(requestedFiles)
+		if summary.FileCount == 0 && summary.FilesReadCount > 0 {
+			// Very old sessions may contain only terminal item records. Showing
+			// those observed files is more useful than a permanent zero percent.
+			summary.FileCount = summary.FilesReadCount
+		}
 	}
 	return summary, readErr
 }
@@ -633,6 +649,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 	fileIndex := make(map[string]*FileGroup)
 	markOccurrences := make(map[string]int)
 	readFiles := make(map[string]struct{})
+	requestedFiles := make(map[string]struct{})
 
 	readErr := readJSONLLines(f, func(line []byte) {
 		var rec map[string]any
@@ -672,6 +689,9 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 			applyReviewProgress(&vs.Summary, rec)
 
 		case "llm_request":
+			if path, ok := rec["filePath"].(string); ok && path != "" {
+				requestedFiles[path] = struct{}{}
+			}
 			fp, _ := rec["filePath"].(string)
 			tt, _ := rec["taskType"].(string)
 			reqNo := 0
@@ -867,6 +887,12 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 	})
 	if !vs.Summary.Aborted && vs.Summary.RunManifest == nil && !vs.Summary.hasProgressTotal && vs.Summary.FileCount < vs.Summary.FilesReadCount {
 		vs.Summary.FileCount = vs.Summary.FilesReadCount
+	}
+	if vs.Summary.Aborted && vs.Summary.RunManifest == nil && !vs.Summary.hasProgressTotal && vs.Summary.FileCount == 0 {
+		vs.Summary.FileCount = len(requestedFiles)
+		if vs.Summary.FileCount == 0 && vs.Summary.FilesReadCount > 0 {
+			vs.Summary.FileCount = vs.Summary.FilesReadCount
+		}
 	}
 
 	// Aggregate token usage across all task cards

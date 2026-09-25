@@ -359,11 +359,12 @@ func TestProgressPercentLegacyFallbacks(t *testing.T) {
 			want: 100,
 		},
 		{
-			name: "active session has no denominator",
+			name: "active session uses observed files when denominator is absent",
 			summary: SessionSummary{
+				FileCount:      2,
 				FilesReadCount: 2,
 			},
-			want: 0,
+			want: 100,
 		},
 	}
 
@@ -446,7 +447,7 @@ func TestPeekSessionProgressUsesTerminalCoverage(t *testing.T) {
 	}
 }
 
-func TestPeekSessionProgressDoesNotInventActiveDenominator(t *testing.T) {
+func TestPeekSessionProgressUsesObservedFilesWithoutDenominator(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "active.jsonl")
 	writeJSONL(t, path,
@@ -457,8 +458,29 @@ func TestPeekSessionProgressDoesNotInventActiveDenominator(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := summary.ProgressPercent(); got != 0 {
-		t.Fatalf("active progress = %d, want 0 without a denominator", got)
+	if summary.FileCount != 1 {
+		t.Fatalf("active file count = %d, want 1", summary.FileCount)
+	}
+	if got := summary.ProgressPercent(); got != 100 {
+		t.Fatalf("active progress = %d, want 100 from observed file", got)
+	}
+}
+
+func TestPeekSessionProgressUsesRequestedFilesAsActiveDenominator(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-requests.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"llm_request","filePath":"a.go","taskType":"main_task"}`,
+		`{"type":"llm_request","filePath":"b.go","taskType":"main_task"}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[{"content":"finding"}]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 2 || summary.ProgressPercent() != 50 {
+		t.Fatalf("active request progress = %d%% with %d files, want 50%% with 2 files", summary.ProgressPercent(), summary.FileCount)
 	}
 }
 

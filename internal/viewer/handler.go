@@ -23,13 +23,17 @@ func handleSessionProgress(w http.ResponseWriter, r *http.Request, root, repo, s
 		http.Error(w, "session not found", http.StatusNotFound)
 		return
 	}
+	total := summary.SelectedCount
+	if total == 0 {
+		total = summary.FileCount
+	}
 	payload := map[string]any{
-		"percent": summary.ProgressPercent(),
-		"total": summary.SelectedCount,
+		"percent":   summary.ProgressPercent(),
+		"total":     total,
 		"completed": summary.CompletedCount,
-		"reused": summary.ReusedCount,
-		"failed": summary.FailedCount,
-		"active": summary.Aborted,
+		"reused":    summary.ReusedCount,
+		"failed":    summary.FailedCount,
+		"active":    summary.Aborted,
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(payload)
