@@ -223,12 +223,12 @@ This project exists thanks to all the people who contribute. See [CONTRIBUTING.m
 
 [Apache-2.0](LICENSE) — Copyright 2026 Alibaba
 
-## Version 1.0.3
+## Version 1.0.4
 
-Adds the `--default-prompt` flag for the bundled Chinese review prompt and live review progress in the viewer; updates the main npm package and all six platform packages.
+Recovers live progress for legacy sessions that lack a coverage manifest; keeps the bundled review prompt and viewer progress improvements from 1.0.3.
 
-[1.0.3](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.3/docs/release-notes-1.0.3.md)
+[1.0.4](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.4/docs/release-notes-1.0.4.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.3
+npm install -g open-code-review-enhanced@1.0.4
 ```

@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) Copyright 2026 Alibaba
 
-## 버전 1.0.3
+## 버전 1.0.4
 
-내장 중국어 리뷰 프롬프트를 위한 `--default-prompt`와 뷰어의 실시간 리뷰 진행률을 추가하고 메인 npm 패키지와 6개 플랫폼 패키지를 업데이트했습니다.
+커버리지 매니페스트가 없는 이전 세션에서도 실시간 진행률을 복구하도록 수정했습니다. 1.0.3의 내장 프롬프트와 뷰어 진행률 개선도 포함합니다.
 
-[1.0.3](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.3/docs/release-notes-1.0.3.md)
+[1.0.4](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.4/docs/release-notes-1.0.4.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.3
+npm install -g open-code-review-enhanced@1.0.4
 ```
