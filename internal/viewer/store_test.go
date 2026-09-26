@@ -479,8 +479,26 @@ func TestPeekSessionProgressUsesRequestedFilesAsActiveDenominator(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if summary.FileCount != 2 || summary.ProgressPercent() != 50 {
-		t.Fatalf("active request progress = %d%% with %d files, want 50%% with 2 files", summary.ProgressPercent(), summary.FileCount)
+	if summary.FileCount != 2 || summary.ProgressPercent() != 75 {
+		t.Fatalf("active request progress = %d%% with %d files, want 75%% with 2 files", summary.ProgressPercent(), summary.FileCount)
+	}
+}
+
+func TestPeekSessionProgressKeepsLegacyRequestActiveUntilCheckpoint(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-legacy-request.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"llm_request","filePath":"a.js,b.js","taskType":"main_task"}`,
+		`{"type":"llm_response","filePath":"a.js,b.js","taskType":"main_task","content":"tool call"}`,
+		`{"type":"review_item_done","filePath":"a.js","comments":[{"content":"finding"}]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 2 || summary.CompletedCount != 1 || summary.ActiveCount != 1 || summary.ProgressPercent() != 75 {
+		t.Fatalf("legacy active progress = %d%% with %d total, %d completed, %d processing; want 75%%, 2, 1, 1", summary.ProgressPercent(), summary.FileCount, summary.CompletedCount, summary.ActiveCount)
 	}
 }
 
@@ -504,6 +522,24 @@ func TestPeekSessionProgressUsesPersistedActiveDenominator(t *testing.T) {
 	}
 	if got := summary.ProgressPercent(); got != 25 {
 		t.Fatalf("active progress = %d, want 25", got)
+	}
+}
+
+func TestPeekSessionProgressCountsStartedGroupItems(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-group.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4,"selected_paths":["a.js","b.js","c.js","d.js"]}`,
+		`{"type":"review_item_started","file_paths":["a.js","b.js","c.js","d.js"]}`,
+		`{"type":"review_item_done","filePath":"a.js","comments":[{"content":"finding"}]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.ActiveCount != 3 || summary.CompletedCount != 1 || summary.ProgressPercent() != 62 {
+		t.Fatalf("active progress = %d%%, completed %d, processing %d; want 62%%, 1, 3", summary.ProgressPercent(), summary.CompletedCount, summary.ActiveCount)
 	}
 }
 

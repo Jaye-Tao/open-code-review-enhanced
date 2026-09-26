@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/alibaba/open-code-review/internal/model"
 	"github.com/alibaba/open-code-review/internal/session"
@@ -27,13 +28,31 @@ func handleSessionProgress(w http.ResponseWriter, r *http.Request, root, repo, s
 	if total == 0 {
 		total = summary.FileCount
 	}
+	duration := summary.DurationSec
+	if summary.Aborted && !summary.Timestamp.IsZero() {
+		duration = time.Since(summary.Timestamp).Seconds()
+	}
+	state := summary.TerminalState
+	label := statusLabel(state)
+	if summary.Aborted {
+		state = "active"
+		label = "审核中" // allow-non-english: localized viewer status label
+	} else if summary.Legacy || state == "" {
+		state = "legacy"
+		label = statusLabel(state)
+	}
 	payload := map[string]any{
-		"percent":   summary.ProgressPercent(),
-		"total":     total,
-		"completed": summary.CompletedCount,
-		"reused":    summary.ReusedCount,
-		"failed":    summary.FailedCount,
-		"active":    summary.Aborted,
+		"percent":    summary.ProgressPercent(),
+		"total":      total,
+		"completed":  summary.CompletedCount,
+		"processing": summary.ActiveCount,
+		"reused":     summary.ReusedCount,
+		"failed":     summary.FailedCount,
+		"active":     summary.Aborted,
+		"findings":   summary.CommentCount,
+		"duration":   formatDuration(duration),
+		"state":      state,
+		"label":      label,
 	}
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	_ = json.NewEncoder(w).Encode(payload)

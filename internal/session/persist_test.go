@@ -449,7 +449,8 @@ func TestReviewProgressIsFlushedBeforeSessionEnd(t *testing.T) {
 	repoDir := t.TempDir()
 	sh := New(repoDir, "feature", "new-model", SessionOptions{ReviewMode: ReviewModeRange})
 	t.Cleanup(func() { _ = sh.Finalize() })
-	sh.RecordReviewProgress(4)
+	sh.RecordReviewProgress(4, "a.go", "b.go", "c.go", "d.go")
+	sh.RecordReviewItemsStarted("a.go", "b.go")
 
 	records := readJSONLRecords(t, sessionJSONLPath(t, repoDir, sh.SessionID))
 	var progress map[string]any
@@ -464,6 +465,24 @@ func TestReviewProgressIsFlushedBeforeSessionEnd(t *testing.T) {
 	}
 	if got, ok := progress["selected_count"].(float64); !ok || got != 4 {
 		t.Fatalf("selected_count = %v, want 4", progress["selected_count"])
+	}
+	paths, ok := progress["selected_paths"].([]any)
+	if !ok || len(paths) != 4 || paths[0] != "a.go" {
+		t.Fatalf("selected_paths = %v, want four selected files", progress["selected_paths"])
+	}
+	var started map[string]any
+	for _, record := range records {
+		if record["type"] == "review_item_started" {
+			started = record
+			break
+		}
+	}
+	if started == nil {
+		t.Fatal("missing review_item_started record")
+	}
+	startedPaths, ok := started["file_paths"].([]any)
+	if !ok || len(startedPaths) != 2 || startedPaths[0] != "a.go" {
+		t.Fatalf("file_paths = %v, want two started files", started["file_paths"])
 	}
 }
 

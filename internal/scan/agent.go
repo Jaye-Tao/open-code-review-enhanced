@@ -351,7 +351,11 @@ func (a *Agent) Run(ctx context.Context) ([]model.LlmComment, error) {
 	}
 	// The selected scan set is stable before dispatch. Persist its size so the
 	// viewer can calculate live progress from the per-file checkpoint records.
-	a.session.RecordReviewProgress(reviewable)
+	selectedPaths := make([]string, 0, reviewable)
+	for _, item := range a.items {
+		selectedPaths = append(selectedPaths, item.Path)
+	}
+	a.session.RecordReviewProgress(reviewable, selectedPaths...)
 
 	// Pre-run cost projection so users aren't surprised by a large scan.
 	est := estimateCost(a.items, a.planEnabled(), a.dedupEnabled(), a.summaryEnabled())
@@ -738,6 +742,7 @@ func (a *Agent) dispatchBatch(ctx context.Context, batchIdx int, batch []model.S
 		}
 
 		dispatched++
+		a.session.RecordReviewItemsStarted(it.Path)
 		wg.Add(1)
 		go func(it model.ScanItem, fingerprint string) {
 			defer wg.Done()

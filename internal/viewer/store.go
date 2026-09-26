@@ -102,6 +102,7 @@ type SessionSummary struct {
 	// loading the session. It is kept separate from findings because a clean
 	// file still contributes to review progress.
 	FilesReadCount   int
+	ActiveCount      int
 	LLMFailures      int
 	CommentCount     int
 	Aborted          bool
@@ -114,6 +115,8 @@ type SessionSummary struct {
 	WaivedCount      int
 	RunManifest      *session.RunManifest
 	hasProgressTotal bool
+	SelectedPaths    []string
+	selectedPathSet  map[string]struct{}
 }
 
 func (s SessionSummary) ProgressPercent() int {
@@ -135,6 +138,17 @@ func (s SessionSummary) ProgressPercent() int {
 		}
 		return done * 100 / total
 	}
+	if s.hasProgressTotal && s.SelectedCount > 0 && s.Aborted {
+		done := s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+		active := min(s.ActiveCount, max(s.SelectedCount-done, 0))
+		if done >= s.SelectedCount {
+			return 100
+		}
+		// An in-flight file has made meaningful progress, but is not yet a
+		// completed review item. Count it as half a unit until its checkpoint lands.
+		numerator := done*2 + active
+		return min(numerator*100/(s.SelectedCount*2), 99)
+	}
 	if s.hasProgressTotal {
 		if s.SelectedCount == 0 {
 			return 0
@@ -144,9 +158,8 @@ func (s SessionSummary) ProgressPercent() int {
 
 	// Legacy sessions have no frozen denominator. Once they have ended,
 	// files_reviewed is the best available fallback; checkpoint records refine
-	// it for sessions that stopped before all files were reviewed. An active
-	// legacy session has no reliable total yet, so keep the percentage at zero
-	// instead of turning the observed count into a misleading 100%.
+	// it for sessions that stopped before all files were reviewed. Active legacy
+	// sessions can use dispatched request groups as a best-effort estimate.
 	total := s.FileCount
 	if total == 0 {
 		total = s.SelectedCount
@@ -171,6 +184,13 @@ func (s SessionSummary) ProgressPercent() int {
 	}
 	if done > total {
 		done = total
+	}
+	if s.Aborted && s.ActiveCount > 0 {
+		active := min(s.ActiveCount, max(total-done, 0))
+		if done >= total {
+			return 100
+		}
+		return min((done*2+active)*100/(total*2), 99)
 	}
 	return done * 100 / total
 }
@@ -224,7 +244,9 @@ func peekSession(path string) (SessionSummary, error) {
 	summary := SessionSummary{Aborted: true}
 	var lastLine []byte
 	readFiles := make(map[string]struct{})
-	requestedFiles := make(map[string]struct{})
+	requestedPaths := make(map[string]struct{})
+	activeItems := make(map[string]struct{})
+	startedItemsSeen := false
 	metadataRead := false
 	readErr := readJSONLLines(f, func(line []byte) {
 		lastLine = append([]byte(nil), line...)
@@ -264,9 +286,15 @@ func peekSession(path string) (SessionSummary, error) {
 		if typ == "review_progress" {
 			applyReviewProgress(&summary, rec)
 		}
+		if typ == "review_item_started" {
+			startedItemsSeen = true
+			applyStartedItems(&summary, activeItems, rec)
+		}
 		if typ == "llm_request" {
-			if path, ok := rec["filePath"].(string); ok && path != "" {
-				requestedFiles[path] = struct{}{}
+			path, _ := rec["filePath"].(string)
+			taskType, _ := rec["taskType"].(string)
+			if path != "__grouping__" && path != "" {
+				addActiveRequest(requestedPaths, path, taskType)
 			}
 		}
 
@@ -274,6 +302,7 @@ func peekSession(path string) (SessionSummary, error) {
 		// type name would mistake an LLM response containing that text for a
 		// completed file and inflate the percentage.
 		if isReviewItemRecord(typ) {
+			finishActiveItem(&summary, activeItems, rec)
 			if addReviewedFile(readFiles, rec) {
 				countReviewItem(&summary, typ)
 			}
@@ -291,6 +320,11 @@ func peekSession(path string) (SessionSummary, error) {
 			}
 		}
 	}
+	if startedItemsSeen {
+		summary.ActiveCount = len(activeItems)
+	} else {
+		summary.ActiveCount = activeRequestedItemCount(requestedPaths, readFiles)
+	}
 	// A running session has no stable denominator. Only repair a completed
 	// legacy session whose end record omitted (or under-counted) files_reviewed.
 	if !summary.Aborted && summary.RunManifest == nil && !summary.hasProgressTotal && summary.FileCount < summary.FilesReadCount {
@@ -299,7 +333,10 @@ func peekSession(path string) (SessionSummary, error) {
 	if summary.Aborted && summary.RunManifest == nil && !summary.hasProgressTotal && summary.FileCount == 0 {
 		// Older sessions did not persist review_progress. Request records still
 		// provide a stable denominator while the review is running.
-		summary.FileCount = len(requestedFiles)
+		summary.FileCount = len(summary.SelectedPaths)
+		if summary.FileCount == 0 {
+			summary.FileCount = requestedItemCount(requestedPaths)
+		}
 		if summary.FileCount == 0 && summary.FilesReadCount > 0 {
 			// Very old sessions may contain only terminal item records. Showing
 			// those observed files is more useful than a permanent zero percent.
@@ -343,6 +380,93 @@ func applyReviewProgress(summary *SessionSummary, rec map[string]any) {
 	summary.SelectedCount = int(v)
 	summary.FileCount = int(v)
 	summary.hasProgressTotal = true
+	if paths, ok := rec["selected_paths"].([]any); ok {
+		for _, raw := range paths {
+			if path, ok := raw.(string); ok && path != "" {
+				addSelectedPath(summary, path)
+			}
+		}
+	}
+	if summary.SelectedCount == 0 && len(summary.SelectedPaths) > 0 {
+		summary.SelectedCount = len(summary.SelectedPaths)
+		summary.FileCount = summary.SelectedCount
+	}
+}
+
+func addSelectedPath(summary *SessionSummary, path string) {
+	if path == "" {
+		return
+	}
+	if summary.selectedPathSet == nil {
+		summary.selectedPathSet = make(map[string]struct{}, len(summary.SelectedPaths)+1)
+		for _, selected := range summary.SelectedPaths {
+			summary.selectedPathSet[selected] = struct{}{}
+		}
+	}
+	if _, exists := summary.selectedPathSet[path]; exists {
+		return
+	}
+	summary.selectedPathSet[path] = struct{}{}
+	summary.SelectedPaths = append(summary.SelectedPaths, path)
+}
+
+func addActiveRequest(requested map[string]struct{}, path, taskType string) {
+	if path == "" {
+		return
+	}
+	if taskType != string(session.PlanTask) && taskType != string(session.MainTask) {
+		return
+	}
+	requested[path] = struct{}{}
+}
+
+func requestedItemPaths(requested map[string]struct{}) map[string]struct{} {
+	items := make(map[string]struct{})
+	for group := range requested {
+		for _, path := range strings.Split(group, ",") {
+			path = strings.TrimSpace(path)
+			if path != "" {
+				items[path] = struct{}{}
+			}
+		}
+	}
+	return items
+}
+
+func requestedItemCount(requested map[string]struct{}) int {
+	return len(requestedItemPaths(requested))
+}
+
+func activeRequestedItemCount(requested, completed map[string]struct{}) int {
+	items := requestedItemPaths(requested)
+	for path := range completed {
+		delete(items, path)
+	}
+	return len(items)
+}
+
+func applyStartedItems(summary *SessionSummary, active map[string]struct{}, rec map[string]any) {
+	paths, ok := rec["file_paths"].([]any)
+	if !ok {
+		return
+	}
+	for _, raw := range paths {
+		path, ok := raw.(string)
+		if ok && path != "" {
+			active[path] = struct{}{}
+			addSelectedPath(summary, path)
+		}
+	}
+}
+
+func finishActiveItem(summary *SessionSummary, active map[string]struct{}, rec map[string]any) {
+	path, _ := rec["filePath"].(string)
+	if path == "" {
+		path, _ = rec["newPath"].(string)
+	}
+	if path != "" {
+		delete(active, path)
+	}
 }
 
 func countReviewItem(summary *SessionSummary, typ string) {
@@ -649,7 +773,9 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 	fileIndex := make(map[string]*FileGroup)
 	markOccurrences := make(map[string]int)
 	readFiles := make(map[string]struct{})
-	requestedFiles := make(map[string]struct{})
+	requestedPaths := make(map[string]struct{})
+	activeItems := make(map[string]struct{})
+	startedItemsSeen := false
 
 	readErr := readJSONLLines(f, func(line []byte) {
 		var rec map[string]any
@@ -688,12 +814,16 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 		case "review_progress":
 			applyReviewProgress(&vs.Summary, rec)
 
+		case "review_item_started":
+			startedItemsSeen = true
+			applyStartedItems(&vs.Summary, activeItems, rec)
+
 		case "llm_request":
-			if path, ok := rec["filePath"].(string); ok && path != "" {
-				requestedFiles[path] = struct{}{}
-			}
 			fp, _ := rec["filePath"].(string)
 			tt, _ := rec["taskType"].(string)
+			if fp != "__grouping__" && fp != "" {
+				addActiveRequest(requestedPaths, fp, tt)
+			}
 			reqNo := 0
 			if n, ok := rec["request_no"].(float64); ok {
 				reqNo = int(n)
@@ -833,6 +963,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 			}
 
 		case "review_item_done", "review_item_reused", "review_item_failed":
+			finishActiveItem(&vs.Summary, activeItems, rec)
 			if addReviewedFile(readFiles, rec) {
 				countReviewItem(&vs.Summary, typ)
 			}
@@ -885,11 +1016,19 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 			applySessionEnd(&vs.Summary, rec)
 		}
 	})
+	if startedItemsSeen {
+		vs.Summary.ActiveCount = len(activeItems)
+	} else {
+		vs.Summary.ActiveCount = activeRequestedItemCount(requestedPaths, readFiles)
+	}
 	if !vs.Summary.Aborted && vs.Summary.RunManifest == nil && !vs.Summary.hasProgressTotal && vs.Summary.FileCount < vs.Summary.FilesReadCount {
 		vs.Summary.FileCount = vs.Summary.FilesReadCount
 	}
 	if vs.Summary.Aborted && vs.Summary.RunManifest == nil && !vs.Summary.hasProgressTotal && vs.Summary.FileCount == 0 {
-		vs.Summary.FileCount = len(requestedFiles)
+		vs.Summary.FileCount = len(vs.Summary.SelectedPaths)
+		if vs.Summary.FileCount == 0 {
+			vs.Summary.FileCount = requestedItemCount(requestedPaths)
+		}
 		if vs.Summary.FileCount == 0 && vs.Summary.FilesReadCount > 0 {
 			vs.Summary.FileCount = vs.Summary.FilesReadCount
 		}

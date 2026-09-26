@@ -190,7 +190,7 @@ func (jw *jsonlWriter) WriteReviewItemFailed(filePath, oldPath, newPath, fingerp
 // item is dispatched. The item records that follow provide the live numerator;
 // keeping the denominator in its own small record lets readers calculate
 // progress while the session is still running.
-func (jw *jsonlWriter) WriteReviewProgress(selected int) string {
+func (jw *jsonlWriter) WriteReviewProgress(selected int, selectedPaths ...string) string {
 	uuid := generateUUID()
 
 	jw.mu.Lock()
@@ -202,6 +202,27 @@ func (jw *jsonlWriter) WriteReviewProgress(selected int) string {
 		"sessionId":      jw.sessionID,
 		"timestamp":      time.Now().UTC().Format(time.RFC3339),
 		"selected_count": selected,
+		"selected_paths": append([]string(nil), selectedPaths...),
+	}
+	jw.writeRecordLocked(rec)
+	if jw.writer != nil {
+		jw.writer.Flush()
+	}
+	jw.lastUUID = uuid
+	return uuid
+}
+
+func (jw *jsonlWriter) WriteReviewItemsStarted(paths []string) string {
+	uuid := generateUUID()
+	jw.mu.Lock()
+	defer jw.mu.Unlock()
+	rec := map[string]any{
+		"uuid":       uuid,
+		"parentUuid": jw.lastUUID,
+		"type":       "review_item_started",
+		"sessionId":  jw.sessionID,
+		"timestamp":  time.Now().UTC().Format(time.RFC3339),
+		"file_paths": append([]string(nil), paths...),
 	}
 	jw.writeRecordLocked(rec)
 	if jw.writer != nil {

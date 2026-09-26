@@ -164,10 +164,15 @@ func TestHandleSessionProgress(t *testing.T) {
 		t.Fatalf("status = %d, want 200", rr.Code)
 	}
 	var payload struct {
-		Percent   int  `json:"percent"`
-		Total     int  `json:"total"`
-		Completed int  `json:"completed"`
-		Active    bool `json:"active"`
+		Percent    int    `json:"percent"`
+		Total      int    `json:"total"`
+		Completed  int    `json:"completed"`
+		Processing int    `json:"processing"`
+		Findings   int    `json:"findings"`
+		Duration   string `json:"duration"`
+		State      string `json:"state"`
+		Label      string `json:"label"`
+		Active     bool   `json:"active"`
 	}
 	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode progress response: %v", err)
@@ -194,6 +199,19 @@ func TestHandleSessionProgress(t *testing.T) {
 	handleSessionProgress(rr, req, root, "repo", "legacy-active")
 	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"total":1`) || !strings.Contains(rr.Body.String(), `"percent":100`) {
 		t.Fatalf("legacy active progress response = %s", rr.Body.String())
+	}
+
+	writeJSONL(t, filepath.Join(repoDir, "active-group.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4,"selected_paths":["a.js","b.js","c.js","d.js"]}`,
+		`{"type":"review_item_started","file_paths":["a.js","b.js","c.js","d.js"]}`)
+	rr = httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "active-group")
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode active group progress: %v", err)
+	}
+	if payload.Percent != 50 || payload.Total != 4 || payload.Processing != 4 || !payload.Active {
+		t.Fatalf("active group progress = %+v, want 50%%, 4 processing of 4", payload)
 	}
 }
 

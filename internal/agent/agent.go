@@ -723,6 +723,11 @@ dispatchLoop:
 			break dispatchLoop
 		}
 		dispatched += int64(len(group.Diffs))
+		startedPaths := make([]string, 0, len(group.Diffs))
+		for _, d := range group.Diffs {
+			startedPaths = append(startedPaths, d.NewPath)
+		}
+		a.session.RecordReviewItemsStarted(startedPaths...)
 		wg.Add(1)
 
 		go func(g FileGroup) {
@@ -1249,6 +1254,7 @@ func (a *Agent) registerCoverage(diffs []model.Diff) error {
 		return nil
 	}
 	selected := 0
+	selectedPaths := make([]string, 0, len(diffs))
 	selectedIDs := make(map[string]struct{}, len(diffs))
 	for _, d := range diffs {
 		if d.IsDeleted {
@@ -1263,6 +1269,7 @@ func (a *Agent) registerCoverage(diffs []model.Diff) error {
 			return err
 		}
 		selected++
+		selectedPaths = append(selectedPaths, d.NewPath)
 	}
 	if err := b.SealSelected(); err != nil {
 		return err
@@ -1270,7 +1277,7 @@ func (a *Agent) registerCoverage(diffs []model.Diff) error {
 	// The manifest is intentionally frozen only at the end, but the selected
 	// count is already stable here. Persist it before concurrent dispatch starts
 	// so the viewer has a denominator for live progress.
-	a.session.RecordReviewProgress(selected)
+	a.session.RecordReviewProgress(selected, selectedPaths...)
 	return nil
 }
 

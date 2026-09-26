@@ -50,6 +50,7 @@
                 updateText(row, '[data-progress-percent]', `${data.percent}%`);
                 updateText(row, '[data-session-file-count]', data.total);
                 updateText(row, '[data-progress-completed]', data.completed);
+                updateText(row, '[data-progress-active]', data.processing);
                 updateText(row, '[data-progress-reused]', data.reused);
                 updateText(row, '[data-session-findings]', data.findings);
                 updateText(row, '[data-session-duration]', data.duration);
