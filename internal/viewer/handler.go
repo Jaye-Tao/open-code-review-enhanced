@@ -18,6 +18,7 @@ import (
 )
 
 func handleSessionProgress(w http.ResponseWriter, r *http.Request, root, repo, sessionID string) {
+	setNoStore(w)
 	path := filepath.Join(root, repo, sessionID+".jsonl")
 	summary, err := peekSession(path)
 	if err != nil {
@@ -85,6 +86,7 @@ func compareOutput(w http.ResponseWriter, r *http.Request, root, repo, format st
 }
 
 func handleRepos(w http.ResponseWriter, r *http.Request, root string) {
+	setNoStore(w)
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
@@ -108,6 +110,7 @@ type sessionsData struct {
 }
 
 func handleSessions(w http.ResponseWriter, r *http.Request, root, repo string) {
+	setNoStore(w)
 	summaries, err := ListSessions(root, repo)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

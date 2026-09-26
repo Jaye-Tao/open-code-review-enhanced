@@ -5,13 +5,13 @@
     const table = document.getElementById("sessions-table");
     const pager = document.getElementById("sessions-pagination");
     const numbers = document.getElementById("sessions-page-numbers");
-    if (!table || !pager || !numbers) return;
+    if (!table) return;
 
     const input = document.querySelector('[data-session-search]');
     const empty = document.querySelector('[data-session-empty]');
     let query = '';
-    const api = ocrPager({ table, pager, numbers, filter: row => row.textContent.toLowerCase().includes(query), onRender: rows => { if (empty) empty.hidden = rows.length !== 0; } });
-    if (input) input.addEventListener('input', () => { query = input.value.trim().toLowerCase(); api.refresh(); });
+    const api = pager && numbers && window.ocrPager ? ocrPager({ table, pager, numbers, filter: row => row.textContent.toLowerCase().includes(query), onRender: rows => { if (empty) empty.hidden = rows.length !== 0; } }) : null;
+    if (input) input.addEventListener('input', () => { query = input.value.trim().toLowerCase(); if (api) api.refresh(); });
     const form = document.querySelector('.compare-form');
     if (form) form.addEventListener('submit', event => {
         const before = form.elements.before, after = form.elements.after;

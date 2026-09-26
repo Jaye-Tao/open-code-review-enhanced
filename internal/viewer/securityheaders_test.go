@@ -26,6 +26,9 @@ func TestSecurityHeadersSetsAllHeaders(t *testing.T) {
 		"X-Frame-Options":         "DENY",
 		"Referrer-Policy":         "no-referrer",
 		"Permissions-Policy":      "geolocation=(), camera=(), microphone=()",
+		"Cache-Control":           "no-store, no-cache, must-revalidate",
+		"Pragma":                  "no-cache",
+		"Expires":                 "0",
 	}
 	for k, v := range want {
 		if got := rec.Header().Get(k); got != v {
