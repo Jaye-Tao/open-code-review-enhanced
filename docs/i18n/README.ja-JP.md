@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
 
-## バージョン 1.0.4
+## バージョン 1.0.5
 
-カバレッジ マニフェストがない旧セッションでもリアルタイム進捗を復元できるよう修正しました。1.0.3 の組み込みプロンプトとビューアー進捗改善も含まれます。
+処理中のレビュー ファイルの進捗追跡を改善し、セッション再読み込み時にアクティブなレビュー状態を保持します。
 
-[1.0.4](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.4/docs/release-notes-1.0.4.md)
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.4
+npm install -g open-code-review-enhanced@1.0.5
 ```

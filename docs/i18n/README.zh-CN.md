@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
 
-## 1.0.4 版本更新
+## 1.0.5 版本更新
 
-修复旧会话缺少覆盖清单时实时进度无法恢复的问题；保留 1.0.3 的内置提示词和查看器进度改进。
+改进查看器对正在处理文件的进度跟踪，并在重新加载会话时持久化活动审核状态。
 
-[1.0.4](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.4/docs/release-notes-1.0.4.md)
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.4
+npm install -g open-code-review-enhanced@1.0.5
 ```

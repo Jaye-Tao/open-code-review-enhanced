@@ -223,12 +223,12 @@ This project exists thanks to all the people who contribute. See [CONTRIBUTING.m
 
 [Apache-2.0](LICENSE) — Copyright 2026 Alibaba
 
-## Version 1.0.4
+## Version 1.0.5
 
-Recovers live progress for legacy sessions that lack a coverage manifest; keeps the bundled review prompt and viewer progress improvements from 1.0.3.
+Improves viewer progress tracking for in-flight review files and persists active review state across session reloads.
 
-[1.0.4](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.4/docs/release-notes-1.0.4.md)
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.4
+npm install -g open-code-review-enhanced@1.0.5
 ```
