@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) Copyright 2026 Alibaba
 
-## 버전 1.0.5
+## 버전 1.0.6
 
-처리 중인 리뷰 파일의 진행률 추적을 개선하고 세션을 다시 불러올 때 활성 리뷰 상태를 유지합니다.
+뷰어 보안 헤더, 리뷰 상호작용 및 반응형 레이아웃을 개선하고 중국어 CLI 및 npm 설치 가이드를 추가합니다.
 
-[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
+[1.0.6](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.6/docs/release-notes-1.0.6.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.5
+npm install -g open-code-review-enhanced@1.0.6
 ```
