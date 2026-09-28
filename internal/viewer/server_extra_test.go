@@ -854,6 +854,7 @@ func TestRenderTemplate_ShowsFailedReviewItemsAndResumeGuidance(t *testing.T) {
 	body := rr.Body.String()
 	for _, want := range []string{
 		"Failed files",
+		`<span class="file-count-badge">1 file</span>`,
 		"internal/broken.go",
 		"provider request timed out",
 		"ocr review --from main --to feature --resume session-123",
@@ -863,6 +864,9 @@ func TestRenderTemplate_ShowsFailedReviewItemsAndResumeGuidance(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("rendered session missing %q", want)
 		}
+	}
+	if strings.Contains(body, `<details class="failed-items" open>`) {
+		t.Error("failed files should be collapsed by default")
 	}
 }
 
