@@ -532,14 +532,35 @@ h3 {
 }
 .failed-items {
     margin-top: 1rem;
-    padding: 1rem 1.25rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     background: var(--surface);
+    overflow: hidden;
 }
-.failed-items h4 {
-    margin: 0 0 0.5rem;
+.failed-items-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 1.25rem;
+    color: var(--text-strong);
+    cursor: pointer;
     font-size: 0.95rem;
+    font-weight: 600;
+    list-style: none;
+    user-select: none;
+}
+.failed-items-toggle::-webkit-details-marker { display: none; }
+.failed-items-toggle::marker { content: none; }
+.failed-items-toggle .file-count-badge { margin-left: auto; }
+.failed-items-toggle:hover { background: var(--accent-soft); }
+.failed-items[open] > .failed-items-toggle {
+    border-bottom: 1px solid var(--border);
+}
+.failed-items[open] > .failed-items-toggle .chevron-sm svg {
+    transform: rotate(90deg);
+}
+.failed-items-body {
+    padding: 1rem 1.25rem;
 }
 .failed-items-help {
     margin: 0 0 0.75rem;
