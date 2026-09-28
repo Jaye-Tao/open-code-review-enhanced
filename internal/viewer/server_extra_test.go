@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/alibaba/open-code-review/internal/session"
 )
 
 func TestParseTemplate_ReposHTML(t *testing.T) {
@@ -245,20 +247,15 @@ func TestRenderTemplate_SessionsTableMockup(t *testing.T) {
 	})
 	body := rr.Body.String()
 
-	// Every th carries scope="col": the session cell no longer repeats the word
-	// "Session", so the header is what tells a screen reader what the column holds.
-	const header = `<thead><tr><th scope="col">Session ID</th><th scope="col">Branch</th><th scope="col">Mode</th><th scope="col">Model</th>` +
-		`<th scope="col">Files</th><th scope="col">Status</th><th scope="col">Comments</th><th scope="col">Duration</th><th scope="col">Started At</th><th scope="col" class="col-action">Action</th></tr></thead>`
+	const header = `<thead><tr><th>Session ID</th><th>Branch</th><th>Mode</th><th>Model</th>` +
+		`<th>文件</th><th>状态</th><th>问题</th><th>耗时</th><th>开始时间</th><th class="col-action">操作</th></tr></thead>`
 	for _, want := range []string{
 		header,
 		`id="sessions-table"`,
+		`<tr data-session-id="` + fullID + `">`,
 		`<div class="table-scroll" role="region" aria-label="Sessions table">`,
 		`<a class="back-link" href="/" aria-label="Back to repositories"><svg`,
-		// Session ids are random v4 UUIDs, so the first segment already separates
-		// any two of them; the remaining 27 characters cost a wide column and buy
-		// no distinguishing power. The full value stays in title= and in the href,
-		// so hovering and linking are unaffected.
-		`<td class="col-session"><a class="session-id" href="/r/my-repo/` + fullID + `" title="` + fullID + `">b029c726…</a></td>`,
+		`<td class="col-session"><a class="session-id" href="/r/my-repo/` + fullID + `" title="` + fullID + `">Session: b029c726-7b6b-46aa-b923-9fea9f…</a></td>`,
 		`<td class="col-branch">refactor/rename-runprofile</td>`,
 		`<td class="col-mode">range</td>`,
 		`<td class="col-model">claude-opus-5</td>`,
@@ -266,7 +263,7 @@ func TestRenderTemplate_SessionsTableMockup(t *testing.T) {
 		`<td>complete</td>`,
 		`<td class="col-comments">5</td>`,
 		`<td class="col-duration">4m50s</td>`,
-		`<a href="/r/my-repo/compare?before=older-session&amp;after=` + fullID + `">Compare</a>`,
+		`<a href="/r/my-repo/compare?before=older-session&amp;after=` + fullID + `">对比</a>`,
 		`id="sessions-pagination"`,
 		`data-page-step="-1"`,
 		`data-page-step="1"`,
@@ -310,6 +307,9 @@ func TestSessionsJS_PagerContract(t *testing.T) {
 	}
 	if !strings.Contains(string(script), "ocrPager") {
 		t.Error("sessions.js should delegate pagination to the shared ocrPager")
+	}
+	if !strings.Contains(string(script), "row.dataset.sessionId") {
+		t.Error("sessions.js should include the complete session ID when filtering rows")
 	}
 }
 
@@ -525,7 +525,8 @@ func TestRenderTemplate_SessionHeaderMockup(t *testing.T) {
 	for _, required := range []string{
 		`<main class="session-page">`,
 		`aria-label="Back to sessions"><svg`,
-		`<span class="meta-truncate" title="/Users/kite/Documents/code/github/open-code-review">`,
+		`<span class="session-id-value" data-session-id="b029c726-7b6b">b029c726-7b6b</span>`,
+		`<span class="meta-truncate" title="/Users/kite/Documents/code/github/open-code-review" data-copy-path="/Users/kite/Documents/code/github/open-code-review">`,
 		`<span class="meta-truncate" title="refactor/rename-runprofile">`,
 		`<strong>From:</strong> <code>05af664</code>`,
 		`<strong>To:</strong> <code>HEAD</code>`,
@@ -836,6 +837,44 @@ func TestRenderTemplate_ToolCallIconIsInlineSVG(t *testing.T) {
 	}
 }
 
+func TestRenderTemplate_ShowsFailedReviewItemsAndResumeGuidance(t *testing.T) {
+	rr := httptest.NewRecorder()
+	renderTemplate(rr, "session.html", sessionPageData{
+		EncodedRepo: "repo",
+		RepoName:    "MyRepo",
+		Session: &ViewSession{Summary: SessionSummary{
+			SessionID:   "session-123",
+			CWD:         "/test",
+			FailedCount: 1,
+			RunManifest: &session.RunManifest{
+				Input: session.ManifestInput{Mode: session.InputModeRange, RequestedFrom: "main", RequestedHead: "feature"},
+				Coverage: session.Coverage{Failed: []session.CoverageItem{{
+					Path:           "internal/broken.go",
+					Classification: session.FailureProvider,
+					Reason:         "provider request timed out",
+				}}},
+			},
+		}},
+	})
+	body := rr.Body.String()
+	for _, want := range []string{
+		"Failed files",
+		`<span class="file-count-badge">1 file</span>`,
+		"internal/broken.go",
+		"provider request timed out",
+		"ocr review --from main --to feature --resume session-123",
+		"retries failed files",
+		"provided the reviewed input and rules have not changed",
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("rendered session missing %q", want)
+		}
+	}
+	if strings.Contains(body, `<details class="failed-items" open>`) {
+		t.Error("failed files should be collapsed by default")
+	}
+}
+
 func TestRenderTemplate_FilesReviewedUseFileIcon(t *testing.T) {
 	rr := httptest.NewRecorder()
 	renderTemplate(rr, "session.html", sessionPageData{
@@ -870,8 +909,8 @@ func TestRenderTemplate_ReposTableMockup(t *testing.T) {
 	for _, required := range []string{
 		`<main class="repos-page">`,
 		`<div class="table-scroll" role="region" aria-label="Repositories table">`,
-		`<th scope="col" class="col-action">Action</th>`,
-		`<a class="repo-check" href="/r/my-project">Check</a>`,
+		`<th scope="col" class="col-action">操作</th>`,
+		`<a class="repo-check" href="/r/my-project">查看会话</a>`,
 		`<td class="col-repository" data-repository-name><a href="/r/my-project">my-project</a></td>`,
 		`aria-label="Previous page"><svg`,
 		`aria-label="Next page"><svg`,

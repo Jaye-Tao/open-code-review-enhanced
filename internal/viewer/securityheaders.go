@@ -5,6 +5,19 @@ package viewer
 
 import "net/http"
 
+func setNoStore(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+}
+
+func noStore(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		setNoStore(w)
+		next.ServeHTTP(w, r)
+	})
+}
+
 // contentSecurityPolicy locks the viewer down to first-party resources only.
 // The viewer loads no third-party scripts, styles, fonts, or frames, so a
 // strict same-origin policy holds without any 'unsafe-inline' relaxation
@@ -18,7 +31,7 @@ const contentSecurityPolicy = "default-src 'self'; " +
 	"object-src 'none'; " +
 	"base-uri 'none'; " +
 	"frame-ancestors 'none'; " +
-	"form-action 'none'"
+	"form-action 'self'"
 
 // securityHeaders wraps a handler and sets defense-in-depth response headers on
 // every reply. These harden the local viewer's browser-facing surface (the
@@ -28,6 +41,7 @@ const contentSecurityPolicy = "default-src 'self'; " +
 func securityHeaders(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
+		setNoStore(w)
 		h.Set("Content-Security-Policy", contentSecurityPolicy)
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")

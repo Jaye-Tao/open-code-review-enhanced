@@ -73,14 +73,15 @@ func writeCompareSession(t *testing.T, dir, id, reviewMode, coverage string, fin
 func TestToLlmComments(t *testing.T) {
 	t.Parallel() // pure function: no shared state, no t.Setenv, no temp dirs
 	full := &ReviewComment{
-		FilePath:       "a.go",
-		Content:        "content",
-		SuggestionCode: "sugg",
-		ExistingCode:   "existing",
-		StartLine:      3,
-		EndLine:        5,
-		Category:       "bug",
-		Severity:       "high",
+		FilePath:            "a.go",
+		Content:             "content",
+		SuggestionCode:      "sugg",
+		PendingConfirmation: "Confirm the business rule.",
+		ExistingCode:        "existing",
+		StartLine:           3,
+		EndLine:             5,
+		Category:            "bug",
+		Severity:            "high",
 	}
 	tests := []struct {
 		name string
@@ -97,14 +98,15 @@ func TestToLlmComments(t *testing.T) {
 			name: "every field is carried",
 			in:   []*ReviewComment{full},
 			want: []model.LlmComment{{
-				Path:           "a.go",
-				Content:        "content",
-				SuggestionCode: "sugg",
-				ExistingCode:   "existing",
-				StartLine:      3,
-				EndLine:        5,
-				Category:       "bug",
-				Severity:       "high",
+				Path:                "a.go",
+				Content:             "content",
+				SuggestionCode:      "sugg",
+				PendingConfirmation: "Confirm the business rule.",
+				ExistingCode:        "existing",
+				StartLine:           3,
+				EndLine:             5,
+				Category:            "bug",
+				Severity:            "high",
 			}},
 		},
 	}
@@ -133,11 +135,11 @@ func TestModeWarning(t *testing.T) {
 		{name: "both empty", before: "", after: "", want: ""},
 		{
 			name: "different modes", before: "commit", after: "workspace",
-			want: "review modes differ (commit vs workspace); the two runs may not have looked at the same files",
+			want: "两次审核方式不同（提交对比 → 工作区），对比结果可能覆盖了不同的文件范围。",
 		},
 		{
 			name: "before empty renders a dash", before: "", after: "workspace",
-			want: "review modes differ (- vs workspace); the two runs may not have looked at the same files",
+			want: "两次审核方式不同 (- vs workspace); the two runs may not have looked at the same files",
 		},
 	}
 	for _, tt := range tests {
@@ -205,7 +207,7 @@ func TestHandleCompare(t *testing.T) {
 	}{
 		{
 			name: "happy path", query: "before=s1&after=s2", status: http.StatusOK,
-			contains: []string{"New (1)", "Persisting (1)", "Resolved (1)", "Not reviewed (0)",
+			contains: []string{"新增问题", "未修复问题", "疑似已修复", "尚未复查",
 				"newly broken", "still broken", "was broken", "none"},
 		},
 		{
@@ -223,7 +225,7 @@ func TestHandleCompare(t *testing.T) {
 			name:  "a suggested patch renders, not just the prose",
 			query: "before=s1&after=s2", status: http.StatusOK,
 			contains: []string{
-				"Existing Code", "Suggested Change",
+				"现有代码", "建议修改",
 				"x := 1", "x := 2", // persisting finding keeps its patch
 				"z := 3", "z := 4", // new finding carries one too
 				"y := 2", // resolved finding shows the code it used to flag
@@ -234,27 +236,27 @@ func TestHandleCompare(t *testing.T) {
 			// s1 found something in a.go; the after run covered only b.go, so
 			// the unmatched before-finding is undecided, not fixed.
 			query: "before=s1&after=s3", status: http.StatusOK,
-			contains: []string{"New (0)", "Persisting (0)", "Resolved (0)", "Not reviewed (2)"},
+			contains: []string{"新增问题", "未修复问题", "疑似已修复", "尚未复查"},
 		},
 		{
 			name:  "legacy after run reports unmatched findings as resolved",
 			query: "before=s1&after=legacy", status: http.StatusOK,
-			contains: []string{"Resolved (2)", "Not reviewed (0)"},
+			contains: []string{"疑似已修复"},
 		},
 		{
 			name: "self compare is all persisting", query: "before=s1&after=s1", status: http.StatusOK,
-			contains: []string{"New (0)", "Persisting (2)", "Resolved (0)", "Not reviewed (0)"},
+			contains: []string{"新增问题", "未修复问题", "疑似已修复", "尚未复查"},
 		},
 		{
 			name: "mode mismatch warns and still renders", query: "before=s1&after=s4", status: http.StatusOK,
 			contains: []string{
-				"review modes differ (commit vs workspace); the two runs may not have looked at the same files",
-				"New (1)", "Persisting (1)",
+				"两次审核方式不同（提交对比 → 工作区），对比结果可能覆盖了不同的文件范围。",
+				"新增问题", "未修复问题",
 			},
 		},
 		{
 			name: "same mode does not warn", query: "before=s1&after=s2", status: http.StatusOK,
-			absent: []string{"review modes differ"},
+			absent: []string{"两次审核方式不同"},
 		},
 		{
 			name: "findings are html escaped", query: "before=s1&after=xss", status: http.StatusOK,
@@ -272,7 +274,7 @@ func TestHandleCompare(t *testing.T) {
 			// s1's findings resolved. Only completed+reused is a verdict.
 			name:  "interrupted after run does not resolve the files it never reached",
 			query: "before=s1&after=partial", status: http.StatusOK,
-			contains: []string{"New (0)", "Persisting (0)", "Resolved (0)", "Not reviewed (2)"},
+			contains: []string{"新增问题", "未修复问题", "疑似已修复", "尚未复查"},
 		},
 		{
 			// Reachable because encodeRepoPath collapses "/" to "-", so
@@ -361,12 +363,12 @@ func TestRenderTemplate_SessionsCompareLink(t *testing.T) {
 			name:     "two sessions link newest to next oldest",
 			sessions: []SessionSummary{{SessionID: "s-new"}, {SessionID: "s-old"}},
 			// Rows are newest-first, so the oldest row has no link.
-			contains: []string{"/compare?before=s-old&amp;after=s-new", `<th scope="col" class="col-action">Action</th>`},
+			contains: []string{"/compare?before=s-old&amp;after=s-new", `<th class="col-action">操作</th>`},
 		},
 		{
 			name:     "a single session has nothing to compare against",
 			sessions: []SessionSummary{{SessionID: "only"}},
-			contains: []string{`<th scope="col" class="col-action">Action</th>`},
+			contains: []string{`<th class="col-action">操作</th>`},
 			absent:   []string{"/compare?"},
 		},
 	}
@@ -411,11 +413,22 @@ func TestNewMux_RouteDispatch(t *testing.T) {
 		absent   []string
 	}{
 		{
+			name: "HTML comparison export is standalone", target: "/r/myrepo/compare/export.html?before=s1&after=s2",
+			status:   http.StatusOK,
+			contains: []string{"<style>", "<script>", "class=\"compare-page\"", "新增问题"},
+			absent:   []string{"/static/style.css", "/static/compare.js", "/r/myrepo/compare/export.html"},
+		},
+		{
+			name: "Markdown comparison export", target: "/r/myrepo/compare/export.md?before=s1&after=s2",
+			status:   http.StatusOK,
+			contains: []string{"# 会话对比", "## New", "## Persisting", "| 状态 | 数量 |"},
+		},
+		{
 			name: "compare wins over the sessionID wildcard", target: "/r/myrepo/compare?before=s1&after=s2",
 			status: http.StatusOK,
 			// Session Compare, not Session Detail: proves handleCompare ran.
-			contains: []string{"<title>Session Compare", "New (1)", "Persisting (1)"},
-			absent:   []string{"<title>Session Detail"},
+			contains: []string{"<title>会话对比", "新增问题", "未修复问题"},
+			absent:   []string{"<title>审核会话详情"},
 		},
 		{
 			// The sharpest regression signal: if the wildcard captured
@@ -427,11 +440,11 @@ func TestNewMux_RouteDispatch(t *testing.T) {
 		},
 		{
 			name: "the wildcard still serves a real session", target: "/r/myrepo/s1",
-			status: http.StatusOK, contains: []string{"<title>Session Detail"},
+			status: http.StatusOK, contains: []string{"<title>审核会话详情"},
 		},
 		{
 			name: "session list", target: "/r/myrepo", status: http.StatusOK,
-			contains: []string{"Sessions:", `<th scope="col" class="col-action">Action</th>`},
+			contains: []string{"审核会话", `<th class="col-action">操作</th>`},
 		},
 		{
 			name: "repo list", target: "/", status: http.StatusOK,

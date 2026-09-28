@@ -19,7 +19,7 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/@alibaba-group/open-code-review"><img alt="npm" src="https://img.shields.io/npm/v/@alibaba-group/open-code-review?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/open-code-review-enhanced"><img alt="npm" src="https://img.shields.io/npm/v/open-code-review-enhanced?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/alibaba/open-code-review/release.yml?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/alibaba/open-code-review?style=flat-square" /></a>
   <a href="https://deepwiki.com/alibaba/open-code-review"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
@@ -111,10 +111,20 @@ agent의 강점은 동적 판단과 동적 context 검색이 중요한 지점에
 #### 설치
 
 ```bash
-npm install -g @alibaba-group/open-code-review
+npm install -g open-code-review-enhanced
 ```
 
 설치 후 `ocr` 명령을 전역에서 사용할 수 있습니다.
+
+#### 기본 제공 리뷰 프롬프트
+
+npm 패키지에는 선택적으로 사용할 수 있는 중국어 리뷰 배경 프롬프트가 포함되어 있습니다. `--default-prompt`를 지정하면 경로를 조회하지 않고 바로 활성화할 수 있습니다.
+
+```bash
+ocr review --default-prompt
+```
+
+`--background`로 이번 작업의 컨텍스트를 추가할 수 있습니다. 기존의 `--background-file "$(ocr background-path)"` 형식도 계속 지원됩니다.
 
 기타 설치 방법(설치 스크립트, GitHub Release binary, 소스 빌드)은 [설치 가이드](https://open-codereview.ai/docs/installation)를 참조하세요.
 
@@ -204,3 +214,13 @@ ocr delegate rule src/main.go src/handler.go
 ## License
 
 [Apache-2.0](../../LICENSE) Copyright 2026 Alibaba
+
+## 버전 1.0.5
+
+처리 중인 리뷰 파일의 진행률 추적을 개선하고 세션을 다시 불러올 때 활성 리뷰 상태를 유지합니다.
+
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
+
+```sh
+npm install -g open-code-review-enhanced@1.0.5
+```

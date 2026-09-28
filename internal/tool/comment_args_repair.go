@@ -28,13 +28,14 @@ var contentFieldPattern = regexp.MustCompile(`"content"\s*:`)
 // repaired batch means the scan re-read prose as structure — see
 // repairedCommentsAcceptable.
 var knownCommentFields = map[string]struct{}{
-	"content":         {},
-	"existing_code":   {},
-	"suggestion_code": {},
-	"category":        {},
-	"severity":        {},
-	"path":            {},
-	"thinking":        {},
+	"content":              {},
+	"existing_code":        {},
+	"suggestion_code":      {},
+	"pending_confirmation": {},
+	"category":             {},
+	"severity":             {},
+	"path":                 {},
+	"thinking":             {},
 }
 
 // escapeControl returns the JSON escape for a control character. JSON forbids
@@ -212,7 +213,7 @@ func repairedCommentsAcceptable(entries []any, original string) bool {
 // thinking is deliberately absent: a cut thinking reaches the JSON output only,
 // with no terminal or viewer rendering, so suspecting it would forfeit a sound
 // recovery over a diagnostic string.
-var commentTextFields = []string{"content", "existing_code", "suggestion_code", "path"}
+var commentTextFields = []string{"content", "existing_code", "suggestion_code", "pending_confirmation", "path"}
 
 // hasOddQuotes reports whether v carries an odd number of double quotes — the
 // signature of a value cut short at a misjudged terminator.

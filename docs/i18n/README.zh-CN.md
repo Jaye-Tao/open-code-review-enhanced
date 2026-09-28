@@ -19,7 +19,7 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/@alibaba-group/open-code-review"><img alt="npm" src="https://img.shields.io/npm/v/@alibaba-group/open-code-review?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/open-code-review-enhanced"><img alt="npm" src="https://img.shields.io/npm/v/open-code-review-enhanced?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/alibaba/open-code-review/release.yml?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/alibaba/open-code-review?style=flat-square" /></a>
   <a href="https://deepwiki.com/alibaba/open-code-review"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
@@ -111,10 +111,20 @@ Open Code Review 的核心设计理念是将确定性工程与 Agent 结合，�
 #### 安装
 
 ```bash
-npm install -g @alibaba-group/open-code-review
+npm install -g open-code-review-enhanced
 ```
 
 安装后，`ocr` 命令即可全局使用。
+
+#### 内置审查提示词
+
+npm 包包含可选的简体中文审查背景提示词。使用 `--default-prompt` 可直接启用，无需获取文件路径：
+
+```bash
+ocr review --default-prompt
+```
+
+也可以使用 `--background` 追加本次任务的业务背景。原有的 `--background-file "$(ocr background-path)"` 写法仍然兼容。
 
 其他安装方式（安装脚本、GitHub Release 二进制、源码构建），详见[安装指南](https://open-codereview.ai/docs/installation)。
 
@@ -204,3 +214,13 @@ ocr delegate rule src/main.go src/handler.go
 ## 许可证
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
+
+## 1.0.5 版本更新
+
+改进查看器对正在处理文件的进度跟踪，并在重新加载会话时持久化活动审核状态。
+
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
+
+```sh
+npm install -g open-code-review-enhanced@1.0.5
+```

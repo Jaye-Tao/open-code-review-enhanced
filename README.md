@@ -19,9 +19,9 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/@alibaba-group/open-code-review"><img alt="npm" src="https://img.shields.io/npm/v/@alibaba-group/open-code-review?style=flat-square" /></a>
-  <a href="https://github.com/alibaba/open-code-review/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/alibaba/open-code-review/release.yml?style=flat-square" /></a>
-  <a href="https://github.com/alibaba/open-code-review/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/alibaba/open-code-review?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/open-code-review-enhanced"><img alt="npm" src="https://img.shields.io/npm/v/open-code-review-enhanced?style=flat-square" /></a>
+  <a href="https://github.com/Jaye-Tao/open-code-review-enhanced/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/Jaye-Tao/open-code-review-enhanced/release.yml?style=flat-square" /></a>
+  <a href="https://github.com/Jaye-Tao/open-code-review-enhanced/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/Jaye-Tao/open-code-review-enhanced?style=flat-square" /></a>
   <a href="https://deepwiki.com/alibaba/open-code-review"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
   <a href="https://www.bestpractices.dev/projects/13328"><img alt="OpenSSF Best Practices" src="https://img.shields.io/badge/OpenSSF-Gold-D4AF37?style=flat-square" /></a>
 </p>
@@ -111,10 +111,28 @@ The agent's strengths are concentrated where they matter most — dynamic decisi
 #### Install
 
 ```bash
-npm install -g @alibaba-group/open-code-review
+npm install -g open-code-review-enhanced
 ```
 
 After installation, the `ocr` command is available globally.
+
+#### Optional bundled review background
+
+The npm package includes an optional Chinese review background template. It is
+never applied automatically: without `--background-file`, `ocr review` uses
+the official built-in prompts only. To opt in, resolve the installed template
+path and pass it explicitly:
+
+```bash
+ocr review --background-file "$(ocr background-path)"
+```
+
+PowerShell:
+
+```powershell
+$background = ocr background-path
+ocr review --background-file $background
+```
 
 For other installation methods (install script, GitHub Release binary, from source), see [Installation](https://open-codereview.ai/docs/installation).
 
@@ -204,3 +222,13 @@ This project exists thanks to all the people who contribute. See [CONTRIBUTING.m
 ## License
 
 [Apache-2.0](LICENSE) — Copyright 2026 Alibaba
+
+## Version 1.0.5
+
+Improves viewer progress tracking for in-flight review files and persists active review state across session reloads.
+
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
+
+```sh
+npm install -g open-code-review-enhanced@1.0.5
+```

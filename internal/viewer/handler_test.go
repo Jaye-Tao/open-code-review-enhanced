@@ -145,6 +145,76 @@ func TestHandleSessions_NoCWD(t *testing.T) {
 	}
 }
 
+func TestHandleSessionProgress(t *testing.T) {
+	root := t.TempDir()
+	repoDir := filepath.Join(root, "repo")
+	if err := os.MkdirAll(repoDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	writeJSONL(t, filepath.Join(repoDir, "active.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":2}`,
+		`{"type":"review_item_done","filePath":"main.go","comments":[]}`)
+
+	req := httptest.NewRequest("GET", "/r/repo/active/progress", nil)
+	rr := httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "active")
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	var payload struct {
+		Percent    int    `json:"percent"`
+		Total      int    `json:"total"`
+		Completed  int    `json:"completed"`
+		Processing int    `json:"processing"`
+		Findings   int    `json:"findings"`
+		Duration   string `json:"duration"`
+		State      string `json:"state"`
+		Label      string `json:"label"`
+		Active     bool   `json:"active"`
+	}
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode progress response: %v", err)
+	}
+	if payload.Percent != 50 || payload.Total != 2 || payload.Completed != 1 || !payload.Active {
+		t.Fatalf("progress payload = %+v, want 50%%, 1/2, active", payload)
+	}
+
+	writeJSONL(t, filepath.Join(repoDir, "active.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":1}`,
+		`{"type":"review_item_done","filePath":"main.go","comments":[]}`,
+		`{"type":"session_end","files_reviewed":["main.go"]}`)
+	rr = httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "active")
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"active":false`) || !strings.Contains(rr.Body.String(), `"percent":100`) {
+		t.Fatalf("completed progress response = %s", rr.Body.String())
+	}
+
+	writeJSONL(t, filepath.Join(repoDir, "legacy-active.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_item_done","filePath":"main.go","comments":[{"content":"finding"}]}`)
+	rr = httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "legacy-active")
+	if rr.Code != http.StatusOK || !strings.Contains(rr.Body.String(), `"total":1`) || !strings.Contains(rr.Body.String(), `"percent":100`) {
+		t.Fatalf("legacy active progress response = %s", rr.Body.String())
+	}
+
+	writeJSONL(t, filepath.Join(repoDir, "active-group.jsonl"),
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4,"selected_paths":["a.js","b.js","c.js","d.js"]}`,
+		`{"type":"review_item_started","file_paths":["a.js","b.js","c.js","d.js"]}`)
+	rr = httptest.NewRecorder()
+	handleSessionProgress(rr, req, root, "repo", "active-group")
+	if err := json.Unmarshal(rr.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode active group progress: %v", err)
+	}
+	if payload.Percent != 50 || payload.Total != 4 || payload.Processing != 4 || !payload.Active {
+		t.Fatalf("active group progress = %+v, want 50%%, 4 processing of 4", payload)
+	}
+}
+
 func TestHandleSessions_ErrorOnBadDir(t *testing.T) {
 	root := t.TempDir()
 	req := httptest.NewRequest("GET", "/r/missing", nil)
@@ -322,14 +392,14 @@ func TestHandleSession_RendersMarkIdentityNotState(t *testing.T) {
 	}
 }
 
-// The viewer is read-only: no route may accept a write. The mux registers its
+// Document routes remain read-only. The mux registers its
 // document routes with GET-only patterns, so any state-changing method is
 // answered by the ServeMux itself with 405 + Allow, and unmatched paths keep
 // 404ing. Driving newMux directly — rather than a live StartServer, whose
 // root comes from SessionsRoot() and whose goroutine outlives the test —
 // keeps the fixture root real, binds no ports, and leaks nothing. New routes
 // must register method-qualified patterns or these rows stop holding.
-func TestMux_HasNoWriteRoutes(t *testing.T) {
+func TestMux_DocumentRoutesRejectWrites(t *testing.T) {
 	root := t.TempDir()
 	writeMarkIdentityFixture(t, root, "repo", "s1")
 

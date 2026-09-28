@@ -265,7 +265,7 @@ func TestCategoryCounts_NormalizesUnknownCategories(t *testing.T) {
 	}
 }
 
-// TestNumberedCodeLines pins the numbering contract for the Existing Code
+// TestNumberedCodeLines pins the numbering contract for the 现有代码
 // gutter. The interesting half of the table is the cases where the reported
 // range and the snippet disagree: internal/diff/resolver.go drops blank lines
 // while matching, so the span can be wider or narrower than the snippet, and
@@ -343,7 +343,7 @@ func TestParseTemplate_ExistingCodeLineNumbers(t *testing.T) {
 		{
 			name:       "suggestion block is never numbered",
 			comment:    &ReviewComment{FilePath: "a.go", Content: "c", SuggestionCode: "x\ny", StartLine: 10, EndLine: 11},
-			wantHas:    []string{`<div class="code-panel-label">Suggested Change</div>`, "<pre><code>x\ny</code></pre>"},
+			wantHas:    []string{`<div class="code-panel-label">建议修改</div>`, "<pre><code>x\ny</code></pre>"},
 			wantHasNot: []string{`class="line-no"`},
 		},
 		{
@@ -357,9 +357,9 @@ func TestParseTemplate_ExistingCodeLineNumbers(t *testing.T) {
 				EndLine:        11,
 			},
 			wantHas: []string{
-				`<div class="code-panel-label">Existing Code</div>`,
+				`<div class="code-panel-label">现有代码</div>`,
 				`<pre class="code-numbered">`,
-				`<div class="code-panel-label">Suggested Change</div>`,
+				`<div class="code-panel-label">建议修改</div>`,
 				"<pre class=\"code-gutter-offset\"><code>x\ny</code></pre>",
 			},
 			wantHasNot: []string{
@@ -377,7 +377,7 @@ func TestParseTemplate_ExistingCodeLineNumbers(t *testing.T) {
 				EndLine:        14,
 			},
 			wantHas: []string{
-				`<div class="code-panel-label">Suggested Change</div>`,
+				`<div class="code-panel-label">建议修改</div>`,
 				"<pre><code>x\ny</code></pre>",
 			},
 			wantHasNot: []string{
@@ -414,5 +414,27 @@ func TestParseTemplate_ExistingCodeLineNumbers(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParseTemplate_PendingConfirmation(t *testing.T) {
+	tmpl, err := parseTemplate("session.html")
+	if err != nil {
+		t.Fatalf("parseTemplate: %v", err)
+	}
+	vs := &ViewSession{
+		Summary: SessionSummary{SessionID: "s", CWD: "/p"},
+		Comments: []*ReviewComment{{
+			FilePath:            "a.go",
+			Content:             "The behavior depends on a business rule.",
+			PendingConfirmation: "Confirm whether deleted records should appear in this list.",
+		}},
+	}
+	rr := httptest.NewRecorder()
+	if err := tmpl.Execute(rr, sessionPageData{EncodedRepo: "r", RepoName: "R", Session: vs}); err != nil {
+		t.Fatalf("execute session.html: %v", err)
+	}
+	if !strings.Contains(rr.Body.String(), "Pending confirmation:") || !strings.Contains(rr.Body.String(), "Confirm whether deleted records should appear in this list.") {
+		t.Fatalf("rendered page omitted pending confirmation:\n%s", rr.Body.String())
 	}
 }

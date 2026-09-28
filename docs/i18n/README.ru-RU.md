@@ -19,7 +19,7 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/@alibaba-group/open-code-review"><img alt="npm" src="https://img.shields.io/npm/v/@alibaba-group/open-code-review?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/open-code-review-enhanced"><img alt="npm" src="https://img.shields.io/npm/v/open-code-review-enhanced?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/alibaba/open-code-review/release.yml?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/alibaba/open-code-review?style=flat-square" /></a>
   <a href="https://deepwiki.com/alibaba/open-code-review"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
@@ -111,10 +111,20 @@ Open Code Review — это CLI-инструмент для код-ревью н
 #### Установка
 
 ```bash
-npm install -g @alibaba-group/open-code-review
+npm install -g open-code-review-enhanced
 ```
 
 После установки команда `ocr` доступна глобально.
+
+#### Встроенный промпт ревью
+
+npm-пакет содержит необязательный китайский контекстный промпт для ревью. Укажите `--default-prompt`, чтобы включить его напрямую без получения пути к файлу.
+
+```bash
+ocr review --default-prompt
+```
+
+С помощью `--background` можно добавить контекст текущей задачи. Прежний вариант `--background-file "$(ocr background-path)"` также поддерживается.
 
 Другие способы установки (скрипт установки, бинарный файл из GitHub Release, сборка из исходников) описаны в [руководстве по установке](https://open-codereview.ai/docs/installation).
 
@@ -204,3 +214,13 @@ ocr delegate rule src/main.go src/handler.go
 ## Лицензия
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
+
+## Версия 1.0.5
+
+Улучшено отслеживание прогресса файлов, которые сейчас проверяются, а активное состояние проверки сохраняется при повторной загрузке сессии.
+
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
+
+```sh
+npm install -g open-code-review-enhanced@1.0.5
+```

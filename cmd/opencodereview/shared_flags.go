@@ -31,6 +31,10 @@ func addBackgroundFlags(cmd *cobra.Command, background, backgroundFile *string) 
 	cmd.Flags().StringVarP(backgroundFile, "background-file", "B", "", "path to a Markdown file used as review background (takes precedence over --background)")
 }
 
+func addDefaultPromptFlag(cmd *cobra.Command, target *bool) {
+	cmd.Flags().BoolVar(target, "default-prompt", false, "use the bundled default review prompt")
+}
+
 func addOutputFlags(cmd *cobra.Command, format, audience *string) {
 	cmd.Flags().StringVarP(format, "format", "f", "text", "output format: text, json, or sarif")
 	cmd.Flags().StringVar(audience, "audience", "human", "output audience: human (show progress; on stderr for json/sarif) or agent (summary only)")
@@ -125,6 +129,9 @@ func validateReviewOptions(opts *reviewOptions) error {
 	if err := validateDiffMode(opts.from, opts.to, opts.commit); err != nil {
 		return err
 	}
+	if opts.defaultPrompt && opts.backgroundFile != "" {
+		return fmt.Errorf("--default-prompt cannot be combined with --background-file")
+	}
 	if opts.preview && opts.resume != "" {
 		return fmt.Errorf("--preview and --resume cannot be used together")
 	}
@@ -211,6 +218,7 @@ func registerReviewFlags(cmd *cobra.Command, opts *reviewOptions) {
 	addOutputPathFlag(cmd, &opts.outputPath)
 	addConcurrencyFlags(cmd, &opts.concurrency, &opts.concurrentTaskTimeout, &opts.maxTools, &opts.maxGitProcs, &opts.maxTokens, &opts.maxTokensBudget)
 	addBackgroundFlags(cmd, &opts.background, &opts.backgroundFile)
+	addDefaultPromptFlag(cmd, &opts.defaultPrompt)
 	addProviderFlag(cmd, &opts.provider)
 	addModelFlag(cmd, &opts.model)
 	cmd.Flags().StringVar(&opts.effort, "effort", "", "review effort preset: low | medium | high (\"\" = configured or default medium)")

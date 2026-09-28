@@ -75,7 +75,8 @@ snippet (`existing_code`) so OCR can compute line numbers automatically.
       {
         "content": "string — the comment in the configured language",
         "existing_code": "string — snippet from the diff to anchor on",
-        "suggestion_code": "string — optional fix snippet",
+        "suggestion_code": "string — non-empty minimal candidate fix; conditional when confirmation is required",
+        "pending_confirmation": "string — exact business rule or invariant to confirm; empty when none",
         "thinking": "string — optional, the model's reasoning for this comment"
       }
     ]
@@ -84,8 +85,11 @@ snippet (`existing_code`) so OCR can compute line numbers automatically.
 ```
 
 `comments` is an array, so the model can emit several comments in one
-tool call. `content` and `existing_code` are required; `suggestion_code`
-is optional but encouraged. `path` is a top-level optional override —
+tool call. `content`, `existing_code`, `suggestion_code`, and
+`pending_confirmation` are required. Always provide a non-empty candidate fix in
+`suggestion_code`; make it conditional when a specific business or design decision
+must be confirmed first. Use an empty `pending_confirmation` when none is needed.
+`path` is a top-level optional override —
 if omitted, the agent injects the file currently under review. The
 agent also injects `path` automatically when the model leaves it out, so
 the model rarely needs to set it explicitly. `thinking` (per-comment)
@@ -98,7 +102,7 @@ render it).
 > **`thinking` is a runtime-only field.** OCR parses and stores it, but
 > it is deliberately **not** listed in the `code_comment` schema
 > advertised to the model in `tools.json` (only `content`,
-> `existing_code`, and `suggestion_code` are). Stronger models that
+> `existing_code`, `suggestion_code`, and `pending_confirmation` are). Stronger models that
 > emit a `thinking` block anyway will have it persisted; most won't send
 > it, which is fine.
 
@@ -132,7 +136,8 @@ find the spot yourself".
     {
       "content": "`tx.Rollback()` is never deferred — early returns leak the transaction.",
       "existing_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}",
-      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()"
+      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()",
+      "pending_confirmation": ""
     }
   ]
 }

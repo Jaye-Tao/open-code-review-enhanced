@@ -67,7 +67,8 @@ OCR 自动计算行号。
       {
         "content": "string — the comment in the configured language",
         "existing_code": "string — snippet from the diff to anchor on",
-        "suggestion_code": "string — optional fix snippet",
+        "suggestion_code": "string — 非空的最小候选修复代码；需要确认时注明为条件性建议",
+        "pending_confirmation": "string — 需要确认的业务规则或不变量；无需确认时为空",
         "thinking": "string — optional, the model's reasoning for this comment"
       }
     ]
@@ -76,14 +77,16 @@ OCR 自动计算行号。
 ```
 
 `comments` 是数组，因此模型可以在一次工具调用中发出多条评论。`content` 和
-`existing_code` 必需；`suggestion_code` 可选但建议提供。`path` 是顶层可选覆盖——
+`existing_code`、`suggestion_code` 和 `pending_confirmation` 均为必需字段。应在
+`suggestion_code` 中始终提供非空的最小候选修复代码；需要先确认具体业务或设计决策时，应注明仅在确认后应用。
+无需确认时，`pending_confirmation` 为空。`path` 是顶层可选覆盖——
 省略时，agent 会注入当前评审的文件。即便模型省略，agent 也会自动注入 `path`，因此
 模型极少需要显式设置。`thinking`（按评论）捕获模型推理，保留在评论上；OCR 会用
 模型当轮输出的推理内容自动回填（模型未输出推理内容时保持为空），并包含在 JSON 输出中（终端输出不渲染）。
 
 > **`thinking` 是运行时专属字段。** OCR 会解析并存储它，但有意**不**把它列入
 > 给模型的 `code_comment` schema（`tools.json` 中只有 `content`、
-> `existing_code` 和 `suggestion_code`）。更强模型若仍发出 `thinking` 块，也会
+> `existing_code`、`suggestion_code` 和 `pending_confirmation`）。更强模型若仍发出 `thinking` 块，也会
 > 被持久化；多数模型不会发，没问题。
 
 ### 锚定算法
@@ -109,7 +112,8 @@ OCR 用一个**动态滑动窗口**在 diff 中查找 `existing_code` 文本。�
     {
       "content": "`tx.Rollback()` is never deferred — early returns leak the transaction.",
       "existing_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}",
-      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()"
+      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()",
+      "pending_confirmation": ""
     }
   ]
 }

@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2026 alibaba/open-code-review Contributors
 
-// Package viewer provides a read-only WebUI for browsing session records
+// Package viewer provides a WebUI for browsing session records
 // produced by open-code-review runs. It scans JSONL files under
 // $HOME/.opencodereview/sessions/, parses them, and exposes structured data.
 package viewer
 
 import (
 	"bufio"
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -84,31 +83,116 @@ func DiscoverRepos(root string) ([]RepoInfo, error) {
 	return repos, nil
 }
 
-// SessionSummary is built from session_start and session_end records.
+// SessionSummary is built from session metadata, live progress/checkpoint
+// records, and the optional terminal session_end record.
 type SessionSummary struct {
-	SessionID      string
-	Timestamp      time.Time
-	CWD            string
-	GitBranch      string
-	Model          string
-	ReviewMode     string
-	DiffFrom       string
-	DiffTo         string
-	DiffCommit     string
-	FilesReviewed  []string
-	DurationSec    float64
-	FileCount      int
-	LLMFailures    int
-	CommentCount   int
-	Aborted        bool
-	Legacy         bool
-	TerminalState  string
-	SelectedCount  int
-	CompletedCount int
-	ReusedCount    int
-	FailedCount    int
-	WaivedCount    int
-	RunManifest    *session.RunManifest
+	SessionID     string
+	Timestamp     time.Time
+	CWD           string
+	GitBranch     string
+	Model         string
+	ReviewMode    string
+	DiffFrom      string
+	DiffTo        string
+	DiffCommit    string
+	FilesReviewed []string
+	DurationSec   float64
+	FileCount     int
+	// FilesReadCount is the number of file-level review records observed while
+	// loading the session. It is kept separate from findings because a clean
+	// file still contributes to review progress.
+	FilesReadCount   int
+	ActiveCount      int
+	LLMFailures      int
+	CommentCount     int
+	Aborted          bool
+	Legacy           bool
+	TerminalState    string
+	SelectedCount    int
+	CompletedCount   int
+	ReusedCount      int
+	FailedCount      int
+	WaivedCount      int
+	RunManifest      *session.RunManifest
+	hasProgressTotal bool
+	SelectedPaths    []string
+	selectedPathSet  map[string]struct{}
+}
+
+func (s SessionSummary) ProgressPercent() int {
+	// A run manifest is authoritative for review sessions. Every selected item
+	// ends in exactly one coverage bucket, including failed and waived items, so
+	// those buckets describe progress without depending on which checkpoint
+	// records happened to be persisted.
+	if s.RunManifest != nil {
+		total := s.SelectedCount
+		if total == 0 {
+			total = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+		}
+		if total == 0 {
+			return 0
+		}
+		done := s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+		if done > total {
+			done = total
+		}
+		return done * 100 / total
+	}
+	if s.hasProgressTotal && s.SelectedCount > 0 && s.Aborted {
+		done := s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+		active := min(s.ActiveCount, max(s.SelectedCount-done, 0))
+		if done >= s.SelectedCount {
+			return 100
+		}
+		// An in-flight file has made meaningful progress, but is not yet a
+		// completed review item. Count it as half a unit until its checkpoint lands.
+		numerator := done*2 + active
+		return min(numerator*100/(s.SelectedCount*2), 99)
+	}
+	if s.hasProgressTotal {
+		if s.SelectedCount == 0 {
+			return 0
+		}
+		return min(s.FilesReadCount, s.SelectedCount) * 100 / s.SelectedCount
+	}
+
+	// Legacy sessions have no frozen denominator. Once they have ended,
+	// files_reviewed is the best available fallback; checkpoint records refine
+	// it for sessions that stopped before all files were reviewed. Active legacy
+	// sessions can use dispatched request groups as a best-effort estimate.
+	total := s.FileCount
+	if total == 0 {
+		total = s.SelectedCount
+	}
+	if total == 0 {
+		if s.Aborted {
+			// An active session without a persisted denominator cannot yield a
+			// meaningful percentage. Item records alone must not turn into 100%.
+			return 0
+		}
+		total = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+	}
+	if total == 0 {
+		return 0
+	}
+	done := s.FilesReadCount
+	if done == 0 {
+		done = len(s.FilesReviewed)
+	}
+	if done == 0 {
+		done = s.CompletedCount + s.ReusedCount + s.FailedCount + s.WaivedCount
+	}
+	if done > total {
+		done = total
+	}
+	if s.Aborted && s.ActiveCount > 0 {
+		active := min(s.ActiveCount, max(total-done, 0))
+		if done >= total {
+			return 100
+		}
+		return min((done*2+active)*100/(total*2), 99)
+	}
+	return done * 100 / total
 }
 
 // ListSessions returns lightweight summaries for all sessions in a repo subdir.
@@ -159,16 +243,22 @@ func peekSession(path string) (SessionSummary, error) {
 
 	summary := SessionSummary{Aborted: true}
 	var lastLine []byte
+	readFiles := make(map[string]struct{})
+	requestedPaths := make(map[string]struct{})
+	activeItems := make(map[string]struct{})
+	startedItemsSeen := false
+	metadataRead := false
 	readErr := readJSONLLines(f, func(line []byte) {
 		lastLine = append([]byte(nil), line...)
 
-		if summary.Timestamp.IsZero() {
-			var rec map[string]any
-			if err := json.Unmarshal(line, &rec); err != nil {
-				return
-			}
+		var rec map[string]any
+		if err := json.Unmarshal(line, &rec); err != nil {
+			return
+		}
+		typ, _ := rec["type"].(string)
+		if !metadataRead && typ == "session_start" {
 			if ts, ok := rec["timestamp"].(string); ok {
-				summary.Timestamp, _ = time.Parse(time.RFC3339, ts)
+				summary.Timestamp, _ = time.Parse(time.RFC3339Nano, ts)
 			}
 			if cwd, ok := rec["cwd"].(string); ok {
 				summary.CWD = cwd
@@ -191,16 +281,33 @@ func peekSession(path string) (SessionSummary, error) {
 			if v, ok := rec["diffCommit"].(string); ok {
 				summary.DiffCommit = v
 			}
-			return
+			metadataRead = true
+		}
+		if typ == "review_progress" {
+			applyReviewProgress(&summary, rec)
+		}
+		if typ == "review_item_started" {
+			startedItemsSeen = true
+			applyStartedItems(&summary, activeItems, rec)
+		}
+		if typ == "llm_request" {
+			path, _ := rec["filePath"].(string)
+			taskType, _ := rec["taskType"].(string)
+			if path != "__grouping__" && path != "" {
+				addActiveRequest(requestedPaths, path, taskType)
+			}
 		}
 
-		// Count comments from review_item_done/reused records
-		if len(line) > 0 && (bytes.Contains(line, []byte(`"review_item_done"`)) || bytes.Contains(line, []byte(`"review_item_reused"`))) {
-			var rec map[string]any
-			if err := json.Unmarshal(line, &rec); err == nil {
-				if comments, ok := rec["comments"].([]any); ok {
-					summary.CommentCount += len(comments)
-				}
+		// Count only actual terminal item records. Searching the raw JSON for a
+		// type name would mistake an LLM response containing that text for a
+		// completed file and inflate the percentage.
+		if isReviewItemRecord(typ) {
+			finishActiveItem(&summary, activeItems, rec)
+			if addReviewedFile(readFiles, rec) {
+				countReviewItem(&summary, typ)
+			}
+			if comments, ok := rec["comments"].([]any); ok {
+				summary.CommentCount += len(comments)
 			}
 		}
 	})
@@ -213,7 +320,165 @@ func peekSession(path string) (SessionSummary, error) {
 			}
 		}
 	}
+	if startedItemsSeen {
+		summary.ActiveCount = len(activeItems)
+	} else {
+		summary.ActiveCount = activeRequestedItemCount(requestedPaths, readFiles)
+	}
+	// A running session has no stable denominator. Only repair a completed
+	// legacy session whose end record omitted (or under-counted) files_reviewed.
+	if !summary.Aborted && summary.RunManifest == nil && !summary.hasProgressTotal && summary.FileCount < summary.FilesReadCount {
+		summary.FileCount = summary.FilesReadCount
+	}
+	if summary.Aborted && summary.RunManifest == nil && !summary.hasProgressTotal && summary.FileCount == 0 {
+		// Older sessions did not persist review_progress. Request records still
+		// provide a stable denominator while the review is running.
+		summary.FileCount = len(summary.SelectedPaths)
+		if summary.FileCount == 0 {
+			summary.FileCount = requestedItemCount(requestedPaths)
+		}
+		if summary.FileCount == 0 && summary.FilesReadCount > 0 {
+			// Very old sessions may contain only terminal item records. Showing
+			// those observed files is more useful than a permanent zero percent.
+			summary.FileCount = summary.FilesReadCount
+		}
+	}
 	return summary, readErr
+}
+
+func isReviewItemRecord(typ string) bool {
+	switch typ {
+	case "review_item_done", "review_item_reused", "review_item_failed":
+		return true
+	default:
+		return false
+	}
+}
+
+func addReviewedFile(seen map[string]struct{}, rec map[string]any) bool {
+	path, _ := rec["filePath"].(string)
+	if path == "" {
+		path, _ = rec["newPath"].(string)
+	}
+	if path == "" {
+		return false
+	}
+	if _, exists := seen[path]; exists {
+		return false
+	}
+	seen[path] = struct{}{}
+	return true
+}
+
+func applyReviewProgress(summary *SessionSummary, rec map[string]any) {
+	v, ok := rec["selected_count"].(float64)
+	if !ok || v < 0 || int(v) < 0 || v != float64(int(v)) || summary.hasProgressTotal || summary.RunManifest != nil {
+		return
+	}
+	// The denominator is frozen before dispatch and must not change as more
+	// conversations (including virtual grouping/summary tasks) are recorded.
+	summary.SelectedCount = int(v)
+	summary.FileCount = int(v)
+	summary.hasProgressTotal = true
+	if paths, ok := rec["selected_paths"].([]any); ok {
+		for _, raw := range paths {
+			if path, ok := raw.(string); ok && path != "" {
+				addSelectedPath(summary, path)
+			}
+		}
+	}
+	if summary.SelectedCount == 0 && len(summary.SelectedPaths) > 0 {
+		summary.SelectedCount = len(summary.SelectedPaths)
+		summary.FileCount = summary.SelectedCount
+	}
+}
+
+func addSelectedPath(summary *SessionSummary, path string) {
+	if path == "" {
+		return
+	}
+	if summary.selectedPathSet == nil {
+		summary.selectedPathSet = make(map[string]struct{}, len(summary.SelectedPaths)+1)
+		for _, selected := range summary.SelectedPaths {
+			summary.selectedPathSet[selected] = struct{}{}
+		}
+	}
+	if _, exists := summary.selectedPathSet[path]; exists {
+		return
+	}
+	summary.selectedPathSet[path] = struct{}{}
+	summary.SelectedPaths = append(summary.SelectedPaths, path)
+}
+
+func addActiveRequest(requested map[string]struct{}, path, taskType string) {
+	if path == "" {
+		return
+	}
+	if taskType != string(session.PlanTask) && taskType != string(session.MainTask) {
+		return
+	}
+	requested[path] = struct{}{}
+}
+
+func requestedItemPaths(requested map[string]struct{}) map[string]struct{} {
+	items := make(map[string]struct{})
+	for group := range requested {
+		for _, path := range strings.Split(group, ",") {
+			path = strings.TrimSpace(path)
+			if path != "" {
+				items[path] = struct{}{}
+			}
+		}
+	}
+	return items
+}
+
+func requestedItemCount(requested map[string]struct{}) int {
+	return len(requestedItemPaths(requested))
+}
+
+func activeRequestedItemCount(requested, completed map[string]struct{}) int {
+	items := requestedItemPaths(requested)
+	for path := range completed {
+		delete(items, path)
+	}
+	return len(items)
+}
+
+func applyStartedItems(summary *SessionSummary, active map[string]struct{}, rec map[string]any) {
+	paths, ok := rec["file_paths"].([]any)
+	if !ok {
+		return
+	}
+	for _, raw := range paths {
+		path, ok := raw.(string)
+		if ok && path != "" {
+			active[path] = struct{}{}
+			addSelectedPath(summary, path)
+		}
+	}
+}
+
+func finishActiveItem(summary *SessionSummary, active map[string]struct{}, rec map[string]any) {
+	path, _ := rec["filePath"].(string)
+	if path == "" {
+		path, _ = rec["newPath"].(string)
+	}
+	if path != "" {
+		delete(active, path)
+	}
+}
+
+func countReviewItem(summary *SessionSummary, typ string) {
+	summary.FilesReadCount++
+	switch typ {
+	case "review_item_done":
+		summary.CompletedCount++
+	case "review_item_reused":
+		summary.ReusedCount++
+	case "review_item_failed":
+		summary.FailedCount++
+	}
 }
 
 // readJSONLLines visits each physical JSONL record without bufio.Scanner's
@@ -243,15 +508,18 @@ func readJSONLLines(r io.Reader, visit func([]byte)) error {
 
 // ReviewComment represents a single code review finding from a session.
 type ReviewComment struct {
-	FilePath       string
-	Content        string
-	SuggestionCode string
-	ExistingCode   string
-	StartLine      int
-	EndLine        int
-	Category       string // bug, security, performance, maintainability, test, style, documentation, other
-	Severity       string // critical, high, medium, low
-	MarkID         string `json:"-"`
+	FilePath            string
+	Content             string
+	SuggestionCode      string
+	PendingConfirmation string
+	ExistingCode        string
+	StartLine           int
+	EndLine             int
+	Category            string // bug, security, performance, maintainability, test, style, documentation, other
+	Severity            string // critical, high, medium, low
+	MarkID              string `json:"-"`
+	ID                  string `json:"-"`
+	Reused              bool   `json:"-"`
 }
 
 // ViewSession holds fully parsed records for one session.
@@ -504,6 +772,10 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 	vs.Summary.Aborted = true
 	fileIndex := make(map[string]*FileGroup)
 	markOccurrences := make(map[string]int)
+	readFiles := make(map[string]struct{})
+	requestedPaths := make(map[string]struct{})
+	activeItems := make(map[string]struct{})
+	startedItemsSeen := false
 
 	readErr := readJSONLLines(f, func(line []byte) {
 		var rec map[string]any
@@ -539,9 +811,19 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 				vs.Summary.DiffCommit = v
 			}
 
+		case "review_progress":
+			applyReviewProgress(&vs.Summary, rec)
+
+		case "review_item_started":
+			startedItemsSeen = true
+			applyStartedItems(&vs.Summary, activeItems, rec)
+
 		case "llm_request":
 			fp, _ := rec["filePath"].(string)
 			tt, _ := rec["taskType"].(string)
+			if fp != "__grouping__" && fp != "" {
+				addActiveRequest(requestedPaths, fp, tt)
+			}
 			reqNo := 0
 			if n, ok := rec["request_no"].(float64); ok {
 				reqNo = int(n)
@@ -680,7 +962,14 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 				}
 			}
 
-		case "review_item_done", "review_item_reused":
+		case "review_item_done", "review_item_reused", "review_item_failed":
+			finishActiveItem(&vs.Summary, activeItems, rec)
+			if addReviewedFile(readFiles, rec) {
+				countReviewItem(&vs.Summary, typ)
+			}
+			if typ == "review_item_failed" {
+				break
+			}
 			fp, _ := rec["filePath"].(string)
 			recUUID, _ := rec["uuid"].(string)
 			if comments, ok := rec["comments"].([]any); ok {
@@ -689,7 +978,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 					if !ok {
 						continue
 					}
-					rc := &ReviewComment{FilePath: fp}
+					rc := &ReviewComment{FilePath: fp, Reused: typ == "review_item_reused"}
 					if v, ok := cm["path"].(string); ok && v != "" {
 						rc.FilePath = v
 					}
@@ -698,6 +987,9 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 					}
 					if v, ok := cm["suggestion_code"].(string); ok {
 						rc.SuggestionCode = v
+					}
+					if v, ok := cm["pending_confirmation"].(string); ok {
+						rc.PendingConfirmation = v
 					}
 					if v, ok := cm["existing_code"].(string); ok {
 						rc.ExistingCode = v
@@ -715,6 +1007,7 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 						rc.Severity = v
 					}
 					rc.MarkID = commentMarkID(recUUID, ci, rc, markOccurrences)
+					rc.ID = strconv.Itoa(len(vs.Comments) + 1)
 					vs.Comments = append(vs.Comments, rc)
 				}
 			}
@@ -723,6 +1016,23 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 			applySessionEnd(&vs.Summary, rec)
 		}
 	})
+	if startedItemsSeen {
+		vs.Summary.ActiveCount = len(activeItems)
+	} else {
+		vs.Summary.ActiveCount = activeRequestedItemCount(requestedPaths, readFiles)
+	}
+	if !vs.Summary.Aborted && vs.Summary.RunManifest == nil && !vs.Summary.hasProgressTotal && vs.Summary.FileCount < vs.Summary.FilesReadCount {
+		vs.Summary.FileCount = vs.Summary.FilesReadCount
+	}
+	if vs.Summary.Aborted && vs.Summary.RunManifest == nil && !vs.Summary.hasProgressTotal && vs.Summary.FileCount == 0 {
+		vs.Summary.FileCount = len(vs.Summary.SelectedPaths)
+		if vs.Summary.FileCount == 0 {
+			vs.Summary.FileCount = requestedItemCount(requestedPaths)
+		}
+		if vs.Summary.FileCount == 0 && vs.Summary.FilesReadCount > 0 {
+			vs.Summary.FileCount = vs.Summary.FilesReadCount
+		}
+	}
 
 	// Aggregate token usage across all task cards
 	fileBreakdown := make([]FileTokenUsage, 0, len(vs.Files))
@@ -824,7 +1134,9 @@ func applySessionEnd(summary *SessionSummary, rec map[string]any) {
 	}
 	if summary.RunManifest == nil {
 		summary.Legacy = true
-		summary.FileCount = len(summary.FilesReviewed)
+		if !summary.hasProgressTotal {
+			summary.FileCount = len(summary.FilesReviewed)
+		}
 	}
 }
 

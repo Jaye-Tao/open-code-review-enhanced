@@ -231,10 +231,14 @@ func sarifResultFromComment(c model.LlmComment) sarifResult {
 		category = "other"
 	}
 
+	message := c.Content
+	if pending := strings.TrimSpace(c.PendingConfirmation); pending != "" {
+		message += "\n\nPending confirmation: " + pending
+	}
 	result := sarifResult{
 		RuleID:              category,
 		Level:               sarifSeverityLevel(c.Severity),
-		Message:             sarifMessage{Text: c.Content},
+		Message:             sarifMessage{Text: message},
 		PartialFingerprints: sarifFingerprints(c, category),
 	}
 

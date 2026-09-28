@@ -4,6 +4,7 @@
 package main
 
 import (
+	_ "embed"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -12,9 +13,15 @@ import (
 	"unicode"
 )
 
+// bundledBackground is the optional review background shipped inside the
+// native binary. It is selected only when --default-prompt is supplied.
+//
+//go:embed default_background.md
+var bundledBackground []byte
+
 const (
 	backgroundSoftLimit    = 2000
-	backgroundHardLimit    = 8000
+	backgroundHardLimit    = 10000
 	backgroundOpenTag      = "<ocr_user_background>"
 	backgroundCloseTag     = "</ocr_user_background>"
 	maxBackgroundFileBytes = 1 << 20 // 1 MB
@@ -29,23 +36,21 @@ func resolveBackgroundFilePath(repoDir, path string) string {
 	return filepath.Join(repoDir, path)
 }
 
-// selectBackground returns the effective background. --background and
-// --background-file are two entry points for the same capability, so only one
-// takes effect: the file wins when both are provided.
+// selectBackground returns the effective background. When both entry points
+// are provided, the file supplies the baseline instructions and the inline
+// value adds task-specific context.
 func selectBackground(inline, fromFile string) string {
 	if fromFile == "" {
 		return inline
 	}
 	if inline != "" {
-		fmt.Fprintln(os.Stderr,
-			"[ocr] both --background and --background-file were provided; "+
-				"--background-file takes precedence and --background is ignored")
+		return fromFile + "\n\n" + inline
 	}
 	return fromFile
 }
 
 // resolveBackground determines the effective background from the flag
-// combination. --background-file wins over --background; the commit-message
+// combination. File and inline backgrounds are combined; the commit-message
 // fallback fires only when neither entry point was used.
 func resolveBackground(repoDir, inline, backgroundFile, commit string) (string, error) {
 	if backgroundFile != "" {
@@ -61,6 +66,14 @@ func resolveBackground(repoDir, inline, backgroundFile, commit string) (string, 
 		}
 	}
 	return inline, nil
+}
+
+func resolveBundledBackground(inline string) (string, error) {
+	fileBg, err := loadBackgroundContent(string(bundledBackground), "bundled default prompt")
+	if err != nil {
+		return "", err
+	}
+	return selectBackground(inline, fileBg), nil
 }
 
 func loadBackgroundFile(path string) (string, error) {
@@ -82,16 +95,19 @@ func loadBackgroundFile(path string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("read background file %q: %w", path, err)
 	}
+	return loadBackgroundContent(string(raw), path)
+}
 
-	cleaned := sanitizeMarkdown(string(raw))
+func loadBackgroundContent(raw, source string) (string, error) {
+	cleaned := sanitizeMarkdown(raw)
 	if cleaned == "" {
-		return "", fmt.Errorf("background file %q is empty after sanitisation", path)
+		return "", fmt.Errorf("background %q is empty after sanitisation", source)
 	}
 
 	if strings.Contains(cleaned, backgroundOpenTag) || strings.Contains(cleaned, backgroundCloseTag) {
 		return "", fmt.Errorf(
-			"background file %q must not contain the reserved delimiters %q or %q",
-			path, backgroundOpenTag, backgroundCloseTag,
+			"background %q must not contain the reserved delimiters %q or %q",
+			source, backgroundOpenTag, backgroundCloseTag,
 		)
 	}
 
@@ -100,12 +116,14 @@ func loadBackgroundFile(path string) (string, error) {
 	// character count misleading.
 	if n := len([]rune(cleaned)); n > backgroundHardLimit {
 		return "", fmt.Errorf(
-			"background content is %d characters, exceeding the hard limit of %d (aborting)",
+			"background %q is %d characters, exceeding the hard limit of %d (aborting)",
+			source,
 			n, backgroundHardLimit,
 		)
 	} else if n > backgroundSoftLimit {
 		fmt.Fprintf(os.Stderr,
-			"[ocr] --background-file content is %d characters, exceeding the recommended %d (continuing but review quality might be impacted)\n",
+			"[ocr] background %q is %d characters, exceeding the recommended %d (continuing but review quality might be impacted)\n",
+			source,
 			n, backgroundSoftLimit,
 		)
 	}

@@ -68,7 +68,8 @@ OCR が行番号を自動計算できるようにします。
       {
         "content": "string — the comment in the configured language",
         "existing_code": "string — snippet from the diff to anchor on",
-        "suggestion_code": "string — optional fix snippet",
+        "suggestion_code": "string — 空でない最小の候補修正コード。確認が必要な場合は条件付きで示す",
+        "pending_confirmation": "string — 確認が必要な業務ルールまたは不変条件。不要なら空",
         "thinking": "string — optional, the model's reasoning for this comment"
       }
     ]
@@ -77,14 +78,17 @@ OCR が行番号を自動計算できるようにします。
 ```
 
 `comments` は配列なので、モデルは 1 回のツール呼び出しで複数のコメントを発行できます。`content` と
-`existing_code` は必須です。`suggestion_code` は任意ですが、提供が推奨されます。`path` はトップレベルの任意の上書きで——
+`existing_code`、`suggestion_code`、`pending_confirmation` は必須です。`suggestion_code` には直接適用できる修正を記載し、
+常に空でない最小の候補修正を記載し、具体的な業務または設計上の確認が必要な場合は確認後に適用する条件付きで示します。
+確認不要の場合は `pending_confirmation` を空にします。
+`path` はトップレベルの任意の上書きで——
 省略すると、agent は現在レビュー中のファイルを注入します。モデルが省略しても agent が自動的に `path` を注入するため、
 モデルが明示的に設定する必要はほとんどありません。`thinking`（コメントごと）はモデルの推論を捕捉し、コメントに保持されます。
 OCR はモデルが現在のターンで出力した推論内容で自動的に補完します（推論内容がない場合は空のまま）。JSON 出力に含めます（ターミナル出力には表示されません）。
 
 > **`thinking` はランタイム専用フィールドです。** OCR はこれを解析して保存しますが、モデルに渡す
 > `code_comment` schema には意図的に**含めていません**（`tools.json` には `content`、
-> `existing_code`、`suggestion_code` のみがあります）。より高性能なモデルが依然として `thinking` ブロックを発行した場合も
+> `existing_code`、`suggestion_code`、`pending_confirmation` のみがあります）。より高性能なモデルが依然として `thinking` ブロックを発行した場合も
 > 永続化されます。ほとんどのモデルは発行しませんが、問題ありません。
 
 ### アンカーアルゴリズム
@@ -110,7 +114,8 @@ OCR は**動的なスライディングウィンドウ**を使って diff 内で
     {
       "content": "`tx.Rollback()` is never deferred — early returns leak the transaction.",
       "existing_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}",
-      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()"
+      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()",
+      "pending_confirmation": ""
     }
   ]
 }

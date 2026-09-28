@@ -114,6 +114,7 @@ ocr r      [flags]   (alias)
 | `--audience <who>` | — | `human` | `human` は進捗行をストリーム出力します（`--format` が `json`/`sarif` の場合は stderr に出力し、stdout は解析可能な単一ドキュメントのままになります）。`agent` は進捗行を完全に抑制し、最終サマリー / JSON のみを出力します。 |
 | `--background <text>` | `-b` | — | plan + main prompt に注入する、任意の要件 / 業務コンテキスト。 |
 | `--background-file <path>` | `-B` | — | レビューの背景として使用する Markdown ファイルのパス。`--background` も指定した場合は両方を結合します。 |
+| `--default-prompt` | — | `false` | パスを取得せずに組み込みのデフォルトレビュー プロンプトを使用します。`--background` と併用できますが、`--background-file` とは併用できません。 |
 | `--exclude <patterns>` | — | — | 除外する gitignore 形式のパターン（カンマ区切り）。`rule.json` の excludes とマージされます。 |
 | `--concurrency <n>` | — | `8` | 並行してレビューするサブタスクの最大数。 |
 | `--timeout <minutes>` | — | `15` | サブタスクごとの締め切り時間。`0` でタイムアウトを無効化します。effort ラウンド数に応じて線形にスケールします（例: low/medium/high で 15/30/45 分）。 |

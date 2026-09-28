@@ -115,6 +115,7 @@ unstaged + untracked 变更。
 | `--audience <who>` | — | `human` | `human` 流式输出进度行（`--format` 为 `json`/`sarif` 时输出到 stderr，使 stdout 保持为单个可解析文档）；`agent` 完全抑制进度行，只打印最终摘要 / JSON。 |
 | `--background <text>` | `-b` | — | 注入 plan + main prompt 的可选需求 / 业务上下文。 |
 | `--background-file <path>` | `-B` | — | 用作评审背景的 Markdown 文件路径。与 `--background` 同时设置时会合并两者。 |
+| `--default-prompt` | — | `false` | 直接使用内置默认评审提示词，无需获取文件路径。可与 `--background` 同时使用，但不能与 `--background-file` 同时使用。 |
 | `--exclude <patterns>` | — | — | 逗号分隔的 gitignore 风格排除模式；与 `rule.json` 的 excludes 合并。 |
 | `--concurrency <n>` | — | `8` | 并行评审的最大子任务数。 |
 | `--timeout <minutes>` | — | `15` | 每个子任务的截止时间。`0` 关闭超时。按 effort 轮数线性缩放（如 low/medium/high 分别为 15/30/45 分钟）。 |

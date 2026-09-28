@@ -120,6 +120,7 @@ staged + unstaged + untracked changes in the current directory's repo.
 | `--audience <who>` | — | `human` | `human` streams progress lines (to stderr when `--format` is `json`/`sarif`, so stdout stays a single parseable document); `agent` suppresses progress entirely and prints only the final summary / JSON. |
 | `--background <text>` | `-b` | — | Optional requirement / business context injected into the plan + main prompts. |
 | `--background-file <path>` | `-B` | — | Path to a Markdown file used as review background. Takes precedence over `--background` when both are set. |
+| `--default-prompt` | — | `false` | Use the bundled default review prompt without resolving its file path. Can be combined with `--background`, but not with `--background-file`. |
 | `--exclude <patterns>` | — | — | Comma-separated gitignore-style patterns to exclude; merged with the `excludes` section of `rule.json` |
 | `--concurrency <n>` | — | `8` | Maximum number of subtasks reviewed in parallel. |
 | `--timeout <minutes>` | — | `15` | Per-subtask deadline. `0` disables the timeout. Scaled linearly by the number of effort review rounds (e.g. 15/30/45 min for low/medium/high). |

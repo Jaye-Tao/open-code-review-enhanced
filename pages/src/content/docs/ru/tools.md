@@ -77,7 +77,8 @@ JSON-файл той же структуры, что и встроенный. Т
       {
         "content": "string — the comment in the configured language",
         "existing_code": "string — snippet from the diff to anchor on",
-        "suggestion_code": "string — optional fix snippet",
+        "suggestion_code": "string — непустой минимальный вариант исправления; при необходимости подтверждения укажите условие",
+        "pending_confirmation": "string — точный бизнес-регламент или инвариант для подтверждения; пусто, если подтверждение не нужно",
         "thinking": "string — optional, the model's reasoning for this comment"
       }
     ]
@@ -86,8 +87,10 @@ JSON-файл той же структуры, что и встроенный. Т
 ```
 
 `comments` — это массив, поэтому модель может создать несколько комментариев
-за один вызов инструмента. Поля `content` и `existing_code` обязательны;
-`suggestion_code` необязательно, но рекомендуется. `path` — необязательное
+за один вызов инструмента. Поля `content`, `existing_code`, `suggestion_code` и
+`pending_confirmation` обязательны. Укажите конкретное исправление в `suggestion_code`;
+всегда указывайте непустой минимальный вариант исправления; если сначала нужно подтвердить конкретное бизнес- или проектное решение,
+сформулируйте исправление как условное. Если подтверждение не нужно, оставьте `pending_confirmation` пустым. `path` — необязательное
 переопределение верхнего уровня; если оно отсутствует, агент подставляет
 проверяемый в данный момент файл. Агент также автоматически добавляет `path`,
 если модель его не указала, поэтому модели редко требуется задавать это поле
@@ -100,7 +103,7 @@ JSON-вывод (в терминальном выводе оно не отобр
 > **`thinking` существует только во время выполнения.** OCR разбирает и
 > сохраняет его, однако намеренно **не** включает в схему `code_comment`,
 > которая объявляется модели в `tools.json` (там присутствуют только `content`,
-> `existing_code` и `suggestion_code`). Более сильные модели, которые всё же
+> `existing_code`, `suggestion_code` и `pending_confirmation`). Более сильные модели, которые всё же
 > выводят блок `thinking`, сохранят его; большинство его не отправляет, и это
 > нормально.
 
@@ -135,7 +138,8 @@ OCR ищет текст из `existing_code` в diff с помощью **дин�
     {
       "content": "`tx.Rollback()` is never deferred — early returns leak the transaction.",
       "existing_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}",
-      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()"
+      "suggestion_code": "tx, err := db.Begin()\nif err != nil {\n    return err\n}\ndefer tx.Rollback()",
+      "pending_confirmation": ""
     }
   ]
 }

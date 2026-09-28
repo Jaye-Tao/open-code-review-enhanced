@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/alibaba/open-code-review/internal/session"
 )
 
 func writeJSONL(t *testing.T, path string, lines ...string) {
@@ -308,6 +310,73 @@ func TestListSessions(t *testing.T) {
 	}
 }
 
+func TestProgressPercentUsesManifestCoverage(t *testing.T) {
+	summary := SessionSummary{
+		RunManifest:    &session.RunManifest{},
+		SelectedCount:  4,
+		CompletedCount: 1,
+		ReusedCount:    1,
+		FailedCount:    1,
+		WaivedCount:    1,
+		FilesReadCount: 1,
+	}
+	if got := summary.ProgressPercent(); got != 100 {
+		t.Fatalf("manifest progress = %d, want 100", got)
+	}
+
+	// A manifest with an incomplete coverage partition must still be bounded by
+	// the selected denominator rather than reporting more than 100 percent.
+	summary.CompletedCount = 1
+	summary.ReusedCount = 0
+	summary.FailedCount = 0
+	summary.WaivedCount = 0
+	if got := summary.ProgressPercent(); got != 25 {
+		t.Fatalf("partial manifest progress = %d, want 25", got)
+	}
+}
+
+func TestProgressPercentLegacyFallbacks(t *testing.T) {
+	tests := []struct {
+		name    string
+		summary SessionSummary
+		want    int
+	}{
+		{
+			name: "checkpoint records",
+			summary: SessionSummary{
+				FileCount:      4,
+				FilesReviewed:  []string{"a.go", "b.go", "c.go", "d.go"},
+				FilesReadCount: 2,
+			},
+			want: 50,
+		},
+		{
+			name: "files reviewed when checkpoints are absent",
+			summary: SessionSummary{
+				FileCount:     2,
+				FilesReviewed: []string{"a.go", "b.go"},
+			},
+			want: 100,
+		},
+		{
+			name: "active session uses observed files when denominator is absent",
+			summary: SessionSummary{
+				FileCount:      2,
+				FilesReadCount: 2,
+			},
+			want: 100,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.summary.ProgressPercent(); got != tt.want {
+				t.Fatalf("progress = %d, want %d", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestPeekSession(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.jsonl")
@@ -355,6 +424,160 @@ func TestPeekSession(t *testing.T) {
 	}
 	if s.FileCount != 2 {
 		t.Errorf("FileCount = %d", s.FileCount)
+	}
+}
+
+func TestPeekSessionProgressUsesTerminalCoverage(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "manifest-progress.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[]}`,
+		`{"type":"session_end","files_reviewed":["a.go"],"run_manifest":{"schema_version":"ocr.run-manifest/v1","run_id":"run-1","operation":"review","terminal_state":"partial","repository":{},"input":{"mode":"workspace"},"execution":{},"coverage":{"selected":[{"item_id":"a","path":"a.go"},{"item_id":"b","path":"b.go"},{"item_id":"c","path":"c.go"},{"item_id":"d","path":"d.go"}],"completed":[{"item_id":"a","path":"a.go"}],"reused":[],"failed":[{"item_id":"b","path":"b.go","classification":"provider"}],"waived":[{"item_id":"c","path":"c.go"},{"item_id":"d","path":"d.go"}]},"elapsed_ms":1}}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := summary.ProgressPercent(); got != 100 {
+		t.Fatalf("manifest progress = %d, want 100", got)
+	}
+	if summary.FilesReadCount != 1 {
+		t.Fatalf("FilesReadCount = %d, want 1", summary.FilesReadCount)
+	}
+}
+
+func TestPeekSessionProgressUsesObservedFilesWithoutDenominator(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 1 {
+		t.Fatalf("active file count = %d, want 1", summary.FileCount)
+	}
+	if got := summary.ProgressPercent(); got != 100 {
+		t.Fatalf("active progress = %d, want 100 from observed file", got)
+	}
+}
+
+func TestPeekSessionProgressUsesRequestedFilesAsActiveDenominator(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-requests.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"llm_request","filePath":"a.go","taskType":"main_task"}`,
+		`{"type":"llm_request","filePath":"b.go","taskType":"main_task"}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[{"content":"finding"}]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 2 || summary.ProgressPercent() != 75 {
+		t.Fatalf("active request progress = %d%% with %d files, want 75%% with 2 files", summary.ProgressPercent(), summary.FileCount)
+	}
+}
+
+func TestPeekSessionProgressKeepsLegacyRequestActiveUntilCheckpoint(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-legacy-request.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"llm_request","filePath":"a.js,b.js","taskType":"main_task"}`,
+		`{"type":"llm_response","filePath":"a.js,b.js","taskType":"main_task","content":"tool call"}`,
+		`{"type":"review_item_done","filePath":"a.js","comments":[{"content":"finding"}]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 2 || summary.CompletedCount != 1 || summary.ActiveCount != 1 || summary.ProgressPercent() != 75 {
+		t.Fatalf("legacy active progress = %d%% with %d total, %d completed, %d processing; want 75%%, 2, 1, 1", summary.ProgressPercent(), summary.FileCount, summary.CompletedCount, summary.ActiveCount)
+	}
+}
+
+func TestPeekSessionProgressUsesPersistedActiveDenominator(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-progress.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 4 || summary.SelectedCount != 4 {
+		t.Fatalf("active denominator = file count %d, selected count %d; want 4/4", summary.FileCount, summary.SelectedCount)
+	}
+	if summary.CompletedCount != 1 || summary.FilesReadCount != 1 {
+		t.Fatalf("active counts = completed %d, read %d; want 1/1", summary.CompletedCount, summary.FilesReadCount)
+	}
+	if got := summary.ProgressPercent(); got != 25 {
+		t.Fatalf("active progress = %d, want 25", got)
+	}
+}
+
+func TestPeekSessionProgressCountsStartedGroupItems(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-group.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4,"selected_paths":["a.js","b.js","c.js","d.js"]}`,
+		`{"type":"review_item_started","file_paths":["a.js","b.js","c.js","d.js"]}`,
+		`{"type":"review_item_done","filePath":"a.js","comments":[{"content":"finding"}]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.ActiveCount != 3 || summary.CompletedCount != 1 || summary.ProgressPercent() != 62 {
+		t.Fatalf("active progress = %d%%, completed %d, processing %d; want 62%%, 1, 3", summary.ProgressPercent(), summary.CompletedCount, summary.ActiveCount)
+	}
+}
+
+func TestPeekSessionProgressKeepsFrozenDenominator(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "active-progress-frozen.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"review_progress","selected_count":4}`,
+		`{"type":"review_progress","selected_count":8}`,
+		`{"type":"review_item_done","filePath":"a.go","comments":[]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FileCount != 4 || summary.SelectedCount != 4 || summary.ProgressPercent() != 25 {
+		t.Fatalf("progress denominator changed: file count %d, selected count %d, percent %d", summary.FileCount, summary.SelectedCount, summary.ProgressPercent())
+	}
+}
+
+func TestPeekSessionIgnoresReviewTypeTextInOtherRecords(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "text.jsonl")
+	writeJSONL(t, path,
+		`{"type":"session_start","timestamp":"2025-01-01T00:00:00Z"}`,
+		`{"type":"llm_response","filePath":"fake.go","content":"the literal review_item_done text is not a checkpoint"}`,
+		`{"type":"session_end","files_reviewed":["real.go"]}`)
+
+	summary, err := peekSession(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.FilesReadCount != 0 {
+		t.Fatalf("FilesReadCount = %d, want 0", summary.FilesReadCount)
+	}
+	if got := summary.ProgressPercent(); got != 100 {
+		t.Fatalf("legacy progress = %d, want 100", got)
 	}
 }
 

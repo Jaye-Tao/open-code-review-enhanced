@@ -136,3 +136,31 @@ func DisplayAddr(addr string) string {
 func resolveAllowedHostsFromEnv(bindAddr string) map[string]struct{} {
 	return buildAllowedHosts(splitBindHost(bindAddr), os.Getenv(EnvAllowedHosts))
 }
+
+// allowLocalInterfaceHosts adds addresses assigned to this machine when the
+// viewer listens on all interfaces. This permits access via the machine's LAN
+// IP while keeping the host allowlist restricted to local addresses.
+func allowLocalInterfaceHosts(allowed map[string]struct{}) {
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		return
+	}
+	for _, iface := range interfaces {
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, addr := range addrs {
+			var host string
+			switch value := addr.(type) {
+			case *net.IPNet:
+				host = value.IP.String()
+			case *net.IPAddr:
+				host = value.IP.String()
+			}
+			if host != "" {
+				allowed[strings.ToLower(host)] = struct{}{}
+			}
+		}
+	}
+}

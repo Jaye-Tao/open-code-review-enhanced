@@ -103,11 +103,12 @@ func TestParseComments_Fields(t *testing.T) {
 	args := map[string]any{
 		"comments": []any{
 			map[string]any{
-				"content":         "fix null check",
-				"existing_code":   "if (x == null)",
-				"suggestion_code": "if (x === null)",
-				"thinking":        "strict equality is safer",
-				"path":            "src/app.ts",
+				"content":              "fix null check",
+				"existing_code":        "if (x == null)",
+				"suggestion_code":      "if (x === null)",
+				"pending_confirmation": "Confirm whether null is a valid input.",
+				"thinking":             "strict equality is safer",
+				"path":                 "src/app.ts",
 			},
 		},
 	}
@@ -130,6 +131,9 @@ func TestParseComments_Fields(t *testing.T) {
 	}
 	if c.SuggestionCode != "if (x === null)" {
 		t.Errorf("SuggestionCode = %q", c.SuggestionCode)
+	}
+	if c.PendingConfirmation != "Confirm whether null is a valid input." {
+		t.Errorf("PendingConfirmation = %q", c.PendingConfirmation)
 	}
 	if c.Thinking != "strict equality is safer" {
 		t.Errorf("Thinking = %q", c.Thinking)

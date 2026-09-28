@@ -24,6 +24,13 @@ The default address is `localhost:5483`. The server holds the foreground
 `~/.opencodereview/sessions/` on each request, so a review running in
 another terminal shows up the moment its JSONL file appears.
 
+The sessions page polls active reviews every 1.5 seconds. OCR writes the
+selected-file count as soon as the review set is frozen, then appends one
+terminal item record per completed, reused or failed file. The displayed
+percentage is derived from those records, so it advances during a run instead
+of jumping from zero to complete. A group containing several files advances
+when that group's terminal records are written.
+
 > **DNS-rebinding protection.** The viewer checks the `Host` header
 > against a loopback allowlist (`localhost`, `127.0.0.1`, `::1`). A
 > concrete bind host (e.g. `--addr 192.168.1.10:5483`) is added

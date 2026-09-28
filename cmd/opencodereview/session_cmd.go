@@ -99,14 +99,15 @@ var sessionCompareCmd = &cobra.Command{
 
 var sessionExportRepoDir string
 var sessionExportOutput string
+var sessionExportFormat string
 
 var sessionExportCmd = &cobra.Command{
 	Use:   "export [flags] [session-id]",
-	Short: "Export one session as a self-contained HTML file",
+	Short: "Export one session as HTML or Markdown",
 	Long: "Render a persisted review session as a single HTML file that opens offline:\n" +
 		"the viewer's stylesheet and script are inlined, so the artifact needs no network\n" +
 		"access and can be archived by CI. With no session id the newest session for the\n" +
-		"repo is exported.\n\n" +
+		"repo is exported. Use --format md for Markdown.\n\n" +
 		"The artifact embeds the reviewed source excerpts the session recorded; treat it\n" +
 		"with the same care as the repository itself.",
 	Example: "  ocr session export -o review.html\n" +
@@ -169,6 +170,7 @@ func init() {
 	sessionCompareCmd.Flags().BoolVar(&sessionCompareJSON, "json", false, "emit the comparison as JSON")
 
 	sessionExportCmd.Flags().StringVar(&sessionExportRepoDir, "repo", "", "root directory of the git repository (default: current dir)")
+	sessionExportCmd.Flags().StringVar(&sessionExportFormat, "format", "html", "export format: html or md")
 	addOutputPathFlag(sessionExportCmd, &sessionExportOutput)
 
 	sessionCmd.AddCommand(sessionListCmd)
@@ -183,6 +185,14 @@ func init() {
 // `ocr review` never prints one — review_cmd.go only reports it on failure — so
 // requiring it would force every CI archive step through `--format json | jq`.
 func runSessionExport(sessionID string) (retErr error) {
+	format := sessionExportFormat
+	if format == "" {
+		format = "html"
+	}
+	if format != "html" && format != "md" {
+		return fmt.Errorf("unsupported export format %q: use html or md", format)
+	}
+
 	resolvedRepo, err := resolveWorkingDirForSession(sessionExportRepoDir)
 	if err != nil {
 		return err
@@ -206,7 +216,7 @@ func runSessionExport(sessionID string) (retErr error) {
 	}
 	root, encodedRepo := filepath.Split(dir)
 
-	out, closeOut, err := resolveOutputWriter(sessionExportOutput, "html")
+	out, closeOut, err := resolveOutputWriter(sessionExportOutput, format)
 	if err != nil {
 		return err
 	}
@@ -216,6 +226,9 @@ func runSessionExport(sessionID string) (retErr error) {
 		}
 	}()
 
+	if format == "md" {
+		return viewer.ExportSessionMarkdown(out, filepath.Clean(root), encodedRepo, sessionID)
+	}
 	return viewer.ExportSession(out, filepath.Clean(root), encodedRepo, sessionID)
 }
 

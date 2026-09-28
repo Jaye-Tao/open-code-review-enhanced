@@ -4,8 +4,10 @@ Copyright 2026 alibaba/open-code-review Contributors
 */}}
 {{define "pager"}}
 <nav id="{{.prefix}}-pagination" class="pagination" aria-label="{{.label}}" hidden>
-    <button type="button" class="page-step" data-page-step="-1" aria-label="Previous page">{{icon "chevron-left"}}</button>
+    <span class="pagination-summary" data-pagination-summary role="status"></span>
+    <label class="page-size-label">每页<select data-page-size aria-label="每页条数"><option value="10">10 条</option><option value="20">20 条</option><option value="50">50 条</option><option value="0">全部</option></select></label>
+    <button type="button" class="page-step" data-page-step="-1" aria-label="上一页">{{icon "chevron-left"}}</button>
     <span id="{{.prefix}}-page-numbers" class="page-numbers"></span>
-    <button type="button" class="page-step" data-page-step="1" aria-label="Next page">{{icon "chevron-right"}}</button>
+    <button type="button" class="page-step" data-page-step="1" aria-label="下一页">{{icon "chevron-right"}}</button>
 </nav>
 {{end}}

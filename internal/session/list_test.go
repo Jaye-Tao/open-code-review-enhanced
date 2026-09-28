@@ -114,6 +114,25 @@ func TestLoadDetail_ReturnsItems(t *testing.T) {
 	}
 }
 
+func TestLoadSummaryReadsActiveProgress(t *testing.T) {
+	tmpHome := t.TempDir()
+	setTestHome(t, tmpHome)
+	repoDir := t.TempDir()
+
+	sh := New(repoDir, "main", "model", SessionOptions{ReviewMode: ReviewModeWorkspace})
+	t.Cleanup(func() { _ = sh.Finalize() })
+	sh.RecordReviewProgress(3)
+	sh.RecordReviewItemDone("a.go", "a.go", "a.go", "fp-a", nil)
+
+	summary, err := LoadSummary(repoDir, sh.SessionID)
+	if err != nil {
+		t.Fatalf("LoadSummary: %v", err)
+	}
+	if !summary.Aborted || summary.SelectedFiles != 3 || summary.CompletedFiles != 1 {
+		t.Fatalf("active summary = %+v, want selected 3 and completed 1", summary)
+	}
+}
+
 func TestLoadSummary_FallsBackToSessionEndFilesReviewed(t *testing.T) {
 	tmpHome := t.TempDir()
 	setTestHome(t, tmpHome)

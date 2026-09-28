@@ -166,6 +166,13 @@ func TestManifestFlowCompleteAndPartial(t *testing.T) {
 		if len(comments) != 0 {
 			t.Fatalf("comments = %d, want 0", len(comments))
 		}
+		summary, err := session.LoadSummary(a.args.RepoDir, a.session.SessionID)
+		if err != nil {
+			t.Fatalf("load active session summary: %v", err)
+		}
+		if !summary.Aborted || summary.SelectedFiles != 1 || summary.CompletedFiles != 1 {
+			t.Fatalf("active progress summary = %+v, want 1 selected and completed", summary)
+		}
 		manifest := finishManifestFlow(t, a)
 		if manifest.TerminalState != session.StateComplete || len(manifest.Coverage.Completed) != 1 || len(manifest.Coverage.Failed) != 0 {
 			t.Fatalf("manifest = %+v", manifest)

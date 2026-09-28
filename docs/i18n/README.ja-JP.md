@@ -19,7 +19,7 @@
   </a>
 </p>
 <p align="center">
-  <a href="https://www.npmjs.com/package/@alibaba-group/open-code-review"><img alt="npm" src="https://img.shields.io/npm/v/@alibaba-group/open-code-review?style=flat-square" /></a>
+  <a href="https://www.npmjs.com/package/open-code-review-enhanced"><img alt="npm" src="https://img.shields.io/npm/v/open-code-review-enhanced?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/actions/workflows/release.yml"><img alt="Build status" src="https://img.shields.io/github/actions/workflow/status/alibaba/open-code-review/release.yml?style=flat-square" /></a>
   <a href="https://github.com/alibaba/open-code-review/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/alibaba/open-code-review?style=flat-square" /></a>
   <a href="https://deepwiki.com/alibaba/open-code-review"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg" /></a>
@@ -111,10 +111,20 @@ Open Code Reviewのコア哲学は、決定論的エンジニアリングとエ�
 #### インストール
 
 ```bash
-npm install -g @alibaba-group/open-code-review
+npm install -g open-code-review-enhanced
 ```
 
 インストール後、`ocr`コマンドがグローバルに利用可能になります。
+
+#### 組み込みレビュープロンプト
+
+npm パッケージには任意で使える中国語のレビュー背景プロンプトが含まれています。`--default-prompt` を指定すると、パスを取得せずに直接有効化できます。
+
+```bash
+ocr review --default-prompt
+```
+
+`--background` で今回のタスク固有のコンテキストを追加できます。既存の `--background-file "$(ocr background-path)"` 形式も引き続き利用できます。
 
 その他のインストール方法（インストールスクリプト、GitHub Release バイナリ、ソースビルド）については、[インストールガイド](https://open-codereview.ai/docs/installation)を参照してください。
 
@@ -204,3 +214,13 @@ ocr delegate rule src/main.go src/handler.go
 ## ライセンス
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
+
+## バージョン 1.0.5
+
+処理中のレビュー ファイルの進捗追跡を改善し、セッション再読み込み時にアクティブなレビュー状態を保持します。
+
+[1.0.5](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.5/docs/release-notes-1.0.5.md)
+
+```sh
+npm install -g open-code-review-enhanced@1.0.5
+```
