@@ -406,6 +406,9 @@ h3 {
     word-break: break-all;
     font-size: 1.25rem;
 }
+.session-id-value {
+    overflow-wrap: anywhere;
+}
 .meta {
     display: flex;
     flex-wrap: wrap;

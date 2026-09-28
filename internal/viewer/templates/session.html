@@ -13,7 +13,7 @@
 <div class="session-header">
     <div class="page-heading">
         {{if not $.Static}}<a class="back-link" href="/r/{{.EncodedRepo}}" aria-label="Back to sessions">{{icon "chevron-left"}}</a>{{end}}
-        <h2>Session: {{.Session.Summary.SessionID}}</h2>
+        <h2>Session: <span class="session-id-value" data-session-id="{{.Session.Summary.SessionID}}">{{.Session.Summary.SessionID}}</span></h2>
     </div>
     <div class="meta">
         <span class="meta-truncate" title="{{.Session.Summary.CWD}}"><strong>CWD:</strong> {{.Session.Summary.CWD}}</span>
@@ -250,7 +250,7 @@
 </details>
 {{end}}
 
-{{if $.Static}}<script>{{$.InlineJS}}</script>{{else}}<script src="/static/a11y.js"></script><script src="/static/session.js"></script>{{end}}
+{{if $.Static}}<script>{{$.InlineJS}}</script>{{else}}<script src="/static/a11y.js"></script><script src="/static/session.js"></script><script src="/static/actions.js"></script>{{end}}
 </main>
 </body>
 </html>

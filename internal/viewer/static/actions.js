@@ -78,18 +78,22 @@
         return dialog;
     }
 
-    document.querySelectorAll('[data-copy-path]').forEach(el => {
+    document.querySelectorAll('[data-copy-path], .session-id[title], [data-session-id]').forEach(el => {
+        const isSessionID = el.matches('.session-id, [data-session-id]');
+        const copyLabel = isSessionID ? '会话 ID' : '完整路径';
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'copy-path-button';
         button.textContent = '复制';
-        button.title = '复制完整路径';
-        button.setAttribute('aria-label', '复制完整路径：' + el.dataset.copyPath);
-        el.after(button);
+        button.title = isSessionID ? '复制会话 ID' : '复制完整路径';
+        const value = el.dataset.copyPath || el.dataset.sessionId || el.title;
+        button.setAttribute('aria-label', button.title + '：' + value);
+        const buttonTarget = el.matches('.session-id, [data-session-id]') && el.parentElement?.tagName === 'A' ? el.parentElement : el;
+        buttonTarget.after(button);
         button.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
-            const path = el.dataset.copyPath;
+            const path = value;
             try {
                 if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(path);
                 else {
@@ -101,14 +105,14 @@
                     try { if (!document.execCommand('copy')) throw new Error('Clipboard unavailable'); }
                     finally { input.remove(); button.focus(); }
                 }
-                notify('完整路径已复制');
+                notify(copyLabel + '已复制');
             } catch (_) {
                 const input = document.createElement('textarea');
                 input.value = path;
                 input.readOnly = true;
                 input.className = 'copy-path-input';
-                input.setAttribute('aria-label', '完整路径');
-                openDialog({ title: '复制路径', description: '浏览器暂时无法写入剪贴板，请选中后手动复制。', content: input });
+                input.setAttribute('aria-label', copyLabel);
+                openDialog({ title: '复制' + copyLabel, description: '浏览器暂时无法写入剪贴板，请选中后手动复制。', content: input });
                 input.focus(); input.select();
             }
         });

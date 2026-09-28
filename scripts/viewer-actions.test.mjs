@@ -27,3 +27,9 @@ test('path copy exposes the complete path and a manual fallback', () => {
     assert.match(source, /copy-path-input/);
     assert.match(source, /navigator\.clipboard/);
 });
+
+test('session IDs use their complete value for copy actions', () => {
+    assert.match(source, /\.session-id\[title\]/);
+    assert.match(source, /data-session-id/);
+    assert.match(source, /const value = el\.dataset\.copyPath \|\| el\.dataset\.sessionId \|\| el\.title/);
+});
