@@ -10,7 +10,12 @@
     const input = document.querySelector('[data-session-search]');
     const empty = document.querySelector('[data-session-empty]');
     let query = '';
-    const api = pager && numbers && window.ocrPager ? ocrPager({ table, pager, numbers, filter: row => row.textContent.toLowerCase().includes(query), onRender: rows => { if (empty) empty.hidden = rows.length !== 0; } }) : null;
+    const matchesSession = row => {
+        if (!query) return true;
+        const sessionId = row.dataset.sessionId || '';
+        return `${sessionId} ${row.textContent}`.toLowerCase().includes(query);
+    };
+    const api = pager && numbers && window.ocrPager ? ocrPager({ table, pager, numbers, filter: matchesSession, onRender: rows => { if (empty) empty.hidden = rows.length !== 0; } }) : null;
     if (input) input.addEventListener('input', () => { query = input.value.trim().toLowerCase(); if (api) api.refresh(); });
     const form = document.querySelector('.compare-form');
     if (form) form.addEventListener('submit', event => {

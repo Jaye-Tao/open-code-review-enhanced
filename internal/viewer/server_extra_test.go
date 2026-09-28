@@ -252,6 +252,7 @@ func TestRenderTemplate_SessionsTableMockup(t *testing.T) {
 	for _, want := range []string{
 		header,
 		`id="sessions-table"`,
+		`<tr data-session-id="` + fullID + `">`,
 		`<div class="table-scroll" role="region" aria-label="Sessions table">`,
 		`<a class="back-link" href="/" aria-label="Back to repositories"><svg`,
 		`<td class="col-session"><a class="session-id" href="/r/my-repo/` + fullID + `" title="` + fullID + `">Session: b029c726-7b6b-46aa-b923-9fea9f…</a></td>`,
@@ -306,6 +307,9 @@ func TestSessionsJS_PagerContract(t *testing.T) {
 	}
 	if !strings.Contains(string(script), "ocrPager") {
 		t.Error("sessions.js should delegate pagination to the shared ocrPager")
+	}
+	if !strings.Contains(string(script), "row.dataset.sessionId") {
+		t.Error("sessions.js should include the complete session ID when filtering rows")
 	}
 }
 
