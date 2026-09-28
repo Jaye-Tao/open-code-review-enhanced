@@ -13,7 +13,7 @@
 <div class="session-header">
     <div class="page-heading">
         {{if not $.Static}}<a class="back-link" href="/r/{{.EncodedRepo}}" aria-label="返回会话">{{icon "chevron-left"}}</a>{{end}}
-        <h1>审核会话 <code>{{truncate 18 .Session.Summary.SessionID}}</code></h1>
+        <h1>审核会话 <code class="session-id-value" data-session-id="{{.Session.Summary.SessionID}}">{{truncate 18 .Session.Summary.SessionID}}</code></h1>
     </div>
     {{if not $.Static}}<div class="session-actions">
         <form class="export-form" action="/r/{{.EncodedRepo}}/{{.Session.Summary.SessionID}}/export" method="get"><select name="format" aria-label="选择导出格式"><option value="html">HTML</option><option value="md">Markdown</option><option value="json">JSON</option><option value="sarif">SARIF</option></select><button class="button button-secondary" type="submit">导出</button></form>

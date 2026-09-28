@@ -78,18 +78,22 @@
         return dialog;
     }
 
-    document.querySelectorAll('[data-copy-path]').forEach(el => {
+    document.querySelectorAll('[data-copy-path], .session-id[title], [data-session-id]').forEach(el => {
+        const isSessionID = el.matches('.session-id, [data-session-id]');
+        const copyLabel = isSessionID ? '会话 ID' : ocrT('完整路径');
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'copy-path-button';
         button.textContent = ocrT('复制');
-        button.title = ocrT('复制完整路径');
-        button.setAttribute('aria-label', ocrT('复制完整路径') + ': ' + el.dataset.copyPath);
-        el.after(button);
+        button.title = isSessionID ? '复制会话 ID' : ocrT('复制完整路径');
+        const value = el.dataset.copyPath || el.dataset.sessionId || el.title;
+        button.setAttribute('aria-label', button.title + ': ' + value);
+        const buttonTarget = el.matches('.session-id, [data-session-id]') && el.parentElement?.tagName === 'A' ? el.parentElement : el;
+        buttonTarget.after(button);
         button.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
-            const path = el.dataset.copyPath;
+            const path = value;
             try {
                 if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(path);
                 else {
@@ -101,14 +105,14 @@
                     try { if (!document.execCommand('copy')) throw new Error('Clipboard unavailable'); }
                     finally { input.remove(); button.focus(); }
                 }
-                notify(ocrT('完整路径已复制'));
+                notify(isSessionID ? '会话 ID 已复制' : ocrT('完整路径已复制'));
             } catch (_) {
                 const input = document.createElement('textarea');
                 input.value = path;
                 input.readOnly = true;
                 input.className = 'copy-path-input';
-                input.setAttribute('aria-label', ocrT('完整路径'));
-                openDialog({ title: ocrT('复制路径'), description: ocrT('浏览器暂时无法写入剪贴板，请选中后手动复制。'), content: input });
+                input.setAttribute('aria-label', copyLabel);
+                openDialog({ title: isSessionID ? '复制会话 ID' : ocrT('复制路径'), description: ocrT('浏览器暂时无法写入剪贴板，请选中后手动复制。'), content: input });
                 input.focus(); input.select();
             }
         });

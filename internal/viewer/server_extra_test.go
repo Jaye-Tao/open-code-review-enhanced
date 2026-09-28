@@ -521,6 +521,7 @@ func TestRenderTemplate_SessionHeaderMockup(t *testing.T) {
 	for _, required := range []string{
 		`<main class="session-page">`,
 		`aria-label="Back to sessions"><svg`,
+		`<span class="session-id-value" data-session-id="b029c726-7b6b">b029c726-7b6b</span>`,
 		`<span class="meta-truncate" title="/Users/kite/Documents/code/github/open-code-review" data-copy-path="/Users/kite/Documents/code/github/open-code-review">`,
 		`<span class="meta-truncate" title="refactor/rename-runprofile">`,
 		`<strong>From:</strong> <code>05af664</code>`,
