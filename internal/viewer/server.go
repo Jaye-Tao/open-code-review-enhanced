@@ -62,7 +62,7 @@ func StartServer(addr, openMode string) error {
 	guarded := hostGuard(allowed, mux)
 
 	// Outermost layer: set defense-in-depth security headers on every response.
-	handler := securityHeaders(guarded)
+	handler := securityHeaders(forwardedPrefixHTML(guarded))
 
 	srv := &http.Server{
 		Handler: handler,
@@ -105,6 +105,66 @@ func StartServer(addr, openMode string) error {
 	}
 
 	return <-serveErr
+}
+
+// forwardedPrefixHTML rewrites root-relative links in HTML responses when a
+// reverse proxy mounts the viewer below a path such as /code-audit. Static
+// assets and navigation links then stay within that mount without requiring
+// the proxy to rewrite response bodies.
+func forwardedPrefixHTML(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		prefix := strings.TrimRight(strings.TrimSpace(r.Header.Get("X-Forwarded-Prefix")), "/")
+		if prefix == "" || !strings.HasPrefix(prefix, "/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		cw := &prefixResponseWriter{header: make(http.Header), prefix: prefix, dst: w}
+		next.ServeHTTP(cw, r)
+		cw.flush()
+	})
+}
+
+type prefixResponseWriter struct {
+	header http.Header
+	dst    http.ResponseWriter
+	prefix string
+	status int
+	body   []byte
+}
+
+func (w *prefixResponseWriter) Header() http.Header { return w.header }
+
+func (w *prefixResponseWriter) WriteHeader(status int) {
+	if w.status == 0 {
+		w.status = status
+	}
+}
+
+func (w *prefixResponseWriter) Write(body []byte) (int, error) {
+	if w.status == 0 {
+		w.status = http.StatusOK
+	}
+	w.body = append(w.body, body...)
+	return len(body), nil
+}
+
+func (w *prefixResponseWriter) flush() {
+	contentType := w.header.Get("Content-Type")
+	if strings.HasPrefix(contentType, "text/html") {
+		body := string(w.body)
+		for _, attribute := range []string{`href="/`, `src="/`, `action="/`} {
+			body = strings.ReplaceAll(body, attribute, attribute[:len(attribute)-1]+w.prefix+"/")
+		}
+		w.body = []byte(body)
+	}
+	for key, values := range w.header {
+		w.dst.Header()[key] = values
+	}
+	w.dst.Header().Del("Content-Length")
+	if w.status != 0 {
+		w.dst.WriteHeader(w.status)
+	}
+	_, _ = w.dst.Write(w.body)
 }
 
 // newMux builds method-qualified document and action routes. Only the explicit
