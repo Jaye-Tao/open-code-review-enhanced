@@ -223,12 +223,12 @@ This project exists thanks to all the people who contribute. See [CONTRIBUTING.m
 
 [Apache-2.0](LICENSE) — Copyright 2026 Alibaba
 
-## Version 1.0.6
+## Version 1.0.7
 
 Improves viewer security headers, review interactions, responsive layout, and adds Chinese CLI and npm installation guides.
 
-[1.0.6](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.6/docs/release-notes-1.0.6.md)
+[1.0.7](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.7/docs/release-notes-1.0.7.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.6
+npm install -g open-code-review-enhanced@1.0.7
 ```
