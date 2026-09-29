@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
 
-## Версия 1.0.8
+## Версия 1.1.0
 
 Улучшены заголовки безопасности, взаимодействие и адаптивная верстка просмотрщика; добавлены китайские руководства по CLI и установке npm.
 
-[1.0.8](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.0.8/docs/release-notes-1.0.8.md)
+[1.1.0](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.0/docs/release-notes-1.1.0.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.0.8
+npm install -g open-code-review-enhanced@1.1.0
 ```
