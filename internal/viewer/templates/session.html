@@ -196,6 +196,7 @@
                     <span class="comment-badge mark-chip" data-mark-chip title="问题唯一 ID">ID {{.ID}}</span>
                 </div>
                 <div class="comment-content">{{.Content}}</div>
+                {{if .CodeAttribution}}<div class="comment-attribution"><strong>代码段最后修改人：</strong> {{.CodeAttribution.Summary}}</div>{{end}}
                 {{if .PendingConfirmation}}<div class="pending-confirmation"><strong>Pending confirmation:</strong> {{.PendingConfirmation}}</div>{{end}}
                 {{if or .ExistingCode .SuggestionCode}}
                 <div class="comment-code-diff">

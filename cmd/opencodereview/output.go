@@ -117,6 +117,9 @@ func renderComment(comment model.LlmComment, out io.Writer) {
 		}
 		fmt.Fprintln(out)
 	}
+	if author := comment.CodeAttribution.Summary(); author != "" {
+		fmt.Fprintf(out, "Code segment last modified by: %s\n\n", sanitizeTerminal(author))
+	}
 
 	if pending := strings.TrimSpace(comment.PendingConfirmation); pending != "" {
 		fmt.Fprintf(out, "Pending confirmation: %s\n\n", sanitizeTerminal(pending))
