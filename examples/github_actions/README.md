@@ -199,7 +199,7 @@ The task and request timeouts are independent:
 
 | Input | Default | Description |
 |-------|---------|-------------|
-| `review_task_timeout` | `'15'` | Per-file/concurrent-task timeout in minutes passed to `ocr review --timeout`; it is not a whole-review wall-clock cap. |
+| `review_task_timeout` | `'30'` | Per-file/concurrent-task timeout in minutes passed to `ocr review --timeout`; it is not a whole-review wall-clock cap. |
 | `llm_timeout` | `'300'` | LLM HTTP request timeout in seconds, applied independently to each model request. |
 
 ```yaml

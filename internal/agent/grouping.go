@@ -19,7 +19,7 @@ import (
 	"github.com/alibaba/open-code-review/internal/telemetry"
 )
 
-const maxFilesPerGroup = 10
+const maxFilesPerGroup = 5
 
 // smallChangeSetLabel labels the single group a below-threshold change set is
 // bundled into. Unlike an LLM-produced label it carries no semantics, because

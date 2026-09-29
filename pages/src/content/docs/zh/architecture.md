@@ -92,7 +92,7 @@ Preview 将这些文件报告为 `provider_directory`；`include` 规则无法�
 
 约束与兜底：
 
-- 每个文件恰好属于一个组；单个组最多 `maxFilesPerGroup = 10` 个文件。
+- 每个文件恰好属于一个组；单个组最多 `maxFilesPerGroup = 5` 个文件。
 - 一组 diff 的合计 token 超过限制时，该组被拆成单文件组
   （`enforceGroupTokenBudget`）。
 - 分组调用失败、返回空或只有 1 个文件时，退化为**每文件一组**的分发方式。
