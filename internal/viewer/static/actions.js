@@ -31,7 +31,7 @@
         const cancel = dialog.querySelector('[data-cancel]');
         const confirm = dialog.querySelector('[data-confirm]');
         const error = dialog.querySelector('.dialog-error');
-        cancel.textContent = ocrT(onConfirm ? '取消' : '关闭');
+        cancel.textContent = onConfirm ? '取消' : '关闭';
         confirm.textContent = confirmLabel || '';
         confirm.hidden = !onConfirm;
         let busy = false;
@@ -60,13 +60,13 @@
             if (busy) return;
             busy = true;
             confirm.disabled = cancel.disabled = true;
-            confirm.textContent = ocrT('正在删除…');
+            confirm.textContent = '正在删除…';
             error.hidden = true;
             try { await onConfirm(); busy = false; close(); }
             catch (err) {
                 busy = false;
                 confirm.disabled = cancel.disabled = false;
-                confirm.textContent = ocrT('重试删除');
+                confirm.textContent = '重试删除';
                 error.textContent = err.message;
                 error.hidden = false;
             }
@@ -78,19 +78,17 @@
         return dialog;
     }
 
-    document.querySelectorAll('[data-copy-path], .session-id[title], [data-session-id]').forEach(el => {
-        const isSessionID = el.matches('.session-id, [data-session-id]');
-        const copyLabel = isSessionID ? '会话 ID' : ocrT('完整路径');
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'copy-path-button';
-        button.textContent = ocrT('复制');
-        button.title = isSessionID ? '复制会话 ID' : ocrT('复制完整路径');
+    document.querySelectorAll('[data-copy-path]').forEach(el => {
+        const copyLabel = '完整路径';
         const value = el.dataset.copyPath || el.dataset.sessionId || el.title;
-        button.setAttribute('aria-label', button.title + ': ' + value);
-        const buttonTarget = el.matches('.session-id, [data-session-id]') && el.parentElement?.tagName === 'A' ? el.parentElement : el;
-        buttonTarget.after(button);
-        button.addEventListener('click', async event => {
+        const copyTarget = document.createElement('button');
+        copyTarget.type = 'button';
+        copyTarget.className = 'copy-path-button';
+        copyTarget.textContent = '复制';
+        copyTarget.title = '复制完整路径';
+        copyTarget.setAttribute('aria-label', copyTarget.title + '：' + value);
+        el.after(copyTarget);
+        copyTarget.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
             const path = value;
@@ -103,16 +101,16 @@
                     document.body.append(input);
                     input.select();
                     try { if (!document.execCommand('copy')) throw new Error('Clipboard unavailable'); }
-                    finally { input.remove(); button.focus(); }
+                    finally { input.remove(); copyTarget.focus(); }
                 }
-                notify(isSessionID ? '会话 ID 已复制' : ocrT('完整路径已复制'));
+                notify(copyLabel + '已复制');
             } catch (_) {
                 const input = document.createElement('textarea');
                 input.value = path;
                 input.readOnly = true;
                 input.className = 'copy-path-input';
                 input.setAttribute('aria-label', copyLabel);
-                openDialog({ title: isSessionID ? '复制会话 ID' : ocrT('复制路径'), description: ocrT('浏览器暂时无法写入剪贴板，请选中后手动复制。'), content: input });
+                openDialog({ title: '复制' + copyLabel, description: '浏览器暂时无法写入剪贴板，请选中后手动复制。', content: input });
                 input.focus(); input.select();
             }
         });
@@ -124,27 +122,15 @@
             const record = document.createElement('code');
             record.className = 'dialog-session-id';
             record.textContent = button.dataset.sessionId;
-            openDialog({ title: ocrT('删除这条会话？'), description: ocrT('删除后无法恢复。仅删除审核记录，不影响项目源码。'), content: record, confirmLabel: ocrT('确认删除'), onConfirm: async () => {
+            openDialog({ title: '删除这条会话？', description: '删除后无法恢复。仅删除审核记录，不影响项目源码。', content: record, confirmLabel: '确认删除', onConfirm: async () => {
                 let response;
                 try { response = await fetch(button.dataset.deleteSession, { method: 'DELETE', headers: { 'X-OCR-Confirm': 'delete' }, credentials: 'same-origin' }); }
-                catch (_) { throw new Error(ocrT('无法连接服务，请检查连接后重试。')); }
-                if (!response.ok && response.status !== 404) throw new Error(response.status === 403 ? ocrT('请求未通过验证，请刷新页面后重试。') : ocrT('删除失败，请稍后重试。'));
+                catch (_) { throw new Error('无法连接服务，请检查连接后重试。'); }
+                if (!response.ok && response.status !== 404) throw new Error(response.status === 403 ? '请求未通过验证，请刷新页面后重试。' : '删除失败，请稍后重试。');
                 try { localStorage.removeItem('ocr-viewer-marks:' + button.dataset.deleteSession.replace(/\/delete$/, '')); }
                 catch (_) { /* Storage failure must not undo a successful deletion. */ }
                 if (button.dataset.returnUrl) window.location.assign(button.dataset.returnUrl);
                 else window.location.reload();
-            } });
-        });
-    });
-
-    document.querySelectorAll('[data-delete-repository]').forEach(button => {
-        button.addEventListener('click', () => {
-            if (document.querySelector('.action-dialog')) return;
-            const record = document.createElement('code'); record.className = 'dialog-session-id'; record.textContent = button.dataset.repository;
-            openDialog({ title: ocrT('删除这个仓库？'), description: ocrT('将删除该仓库的全部审核会话记录，不会影响项目源码。'), content: record, confirmLabel: ocrT('确认删除'), onConfirm: async () => {
-                let response; try { response = await fetch(button.dataset.deleteRepository, { method: 'DELETE', headers: { 'X-OCR-Confirm': 'delete' }, credentials: 'same-origin' }); } catch (_) { throw new Error(ocrT('无法连接服务，请检查连接后重试。')); }
-                if (!response.ok && response.status !== 404) throw new Error(ocrT('删除仓库失败，请稍后重试。'));
-                window.location.reload();
             } });
         });
     });
