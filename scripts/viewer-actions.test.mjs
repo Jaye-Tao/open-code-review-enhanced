@@ -30,6 +30,8 @@ test('path copy exposes the complete path and a manual fallback', () => {
 
 test('session ID links are not intercepted by copy actions', () => {
     assert.match(source, /querySelectorAll\('\[data-copy-path\]'\)/);
-    assert.doesNotMatch(source, /session-id\[title\]/);
-    assert.doesNotMatch(source, /\[data-session-id\]/);
+    assert.match(source, /querySelectorAll\('\.session-id\[title\], \.session-id-value\[data-session-id\]'\)/);
+    assert.match(source, /session-copy-popup/);
+    assert.match(source, /copyValue\(activeID\.dataset\.sessionId \|\| activeID\.title, '会话 ID'/);
+    assert.doesNotMatch(source, /sessionIDs\.forEach\(el => el\.addEventListener\('click'/);
 });

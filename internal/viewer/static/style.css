@@ -2088,6 +2088,7 @@ nav.breadcrumb a:focus-visible {
 .session-actions select { max-width: min(460px, 100%); padding: 6px; }
 .session-actions button, [data-delete-session], .copy-path-button { cursor: pointer; padding: 4px 8px; border: 1px solid currentColor; border-radius: 5px; color: inherit; background: transparent; }
 .copy-path-button { flex: 0 0 auto; font-size: 11px; margin: 0 6px; }
+.session-copy-popup { position: fixed; z-index: 20; cursor: pointer; padding: 5px 9px; border: 1px solid var(--border); border-radius: 5px; color: var(--text); background: var(--surface); box-shadow: var(--shadow-lg); font-size: 12px; }
 .file-path { min-width: 0; }
 .comment-meta .file-path { flex: 1 1 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .file-list li > span[data-copy-path] { min-width: 0; overflow-wrap: anywhere; }
