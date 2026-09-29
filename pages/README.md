@@ -58,6 +58,12 @@ npm run build
 
 Build output is generated in `pages/dist/`.
 
+The production bundle derives its asset prefix from the URL of the script that
+loads it, so it can be served from an Nginx second-level path such as
+`https://example.com/reviews/` without changing the build. If a deployment
+needs a fixed prefix, set `WEBPACK_PUBLIC_PATH` to that path (including the
+trailing slash) before building, for example `WEBPACK_PUBLIC_PATH=/reviews/`.
+
 Use the project script or webpack-cli's `--node-env` option rather than calling
 Webpack without setting the Node environment. `webpack.config.cjs` derives
 `isProduction` from `NODE_ENV` alone, and that one flag decides both Webpack
