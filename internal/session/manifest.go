@@ -584,6 +584,12 @@ func (b *ManifestBuilder) transition(itemID string, to itemState, class FailureC
 	if !ok {
 		return fmt.Errorf("manifest: transition on unknown item %s", itemID)
 	}
+	if bi.state == stateFailed && to == stateSelected {
+		bi.state = stateSelected
+		bi.item.Classification = ""
+		bi.item.Reason = ""
+		return nil
+	}
 	if bi.state != stateSelected {
 		if bi.state == to {
 			// Re-applying the same terminal state is idempotent, except that a
@@ -610,6 +616,13 @@ func (b *ManifestBuilder) transition(itemID string, to itemState, class FailureC
 		bi.item.Reason = sanitized
 	}
 	return nil
+}
+
+// RetryFailed makes a failed selected item eligible for one in-run retry.
+// The item remains in the original selected denominator and can transition to
+// completed or failed again before the manifest is frozen.
+func (b *ManifestBuilder) RetryFailed(itemID string) error {
+	return b.transition(itemID, stateSelected, "", "")
 }
 
 // maxReasonLen bounds the redacted failure/waive summary stored in the manifest,

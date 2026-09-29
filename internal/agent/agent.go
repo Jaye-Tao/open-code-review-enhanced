@@ -189,6 +189,9 @@ type Agent struct {
 	runner          *llmloop.Runner
 	resumeInfo      *ResumeInfo
 	budgetExceeded  atomic.Bool // set when a token/tool-call budget gate stopped dispatch
+	failedMu        sync.Mutex
+	failedPaths     map[string]model.Diff
+	retriedPaths    map[string]bool
 
 	fileGroups []FileGroup // semantic grouping result, stored for JSON output
 
@@ -227,8 +230,10 @@ func New(args Args) *Agent {
 		})
 	}
 	a := &Agent{
-		args:    args,
-		session: args.Session,
+		args:         args,
+		session:      args.Session,
+		failedPaths:  make(map[string]model.Diff),
+		retriedPaths: make(map[string]bool),
 	}
 	a.initManifest()
 	// DiffLookup closure captures a so the runner can resolve per-file
@@ -742,6 +747,9 @@ dispatchLoop:
 					for _, d := range g.Diffs {
 						fingerprint := reviewItemFingerprint(a.reviewMode(), d)
 						a.markFailed(d, session.FailurePanic, "subtask panicked during review")
+						a.failedMu.Lock()
+						a.failedPaths[d.NewPath] = d
+						a.failedMu.Unlock()
 						a.session.RecordReviewItemFailed(d.NewPath, d.OldPath, d.NewPath, fingerprint, fmt.Sprintf("panic: %v", r))
 					}
 					fmt.Fprintf(stdout.Writer(), "[ocr] Subtask panic for group %q: %v\n%s\n", g.Label, r, debug.Stack())
@@ -764,15 +772,23 @@ dispatchLoop:
 			if err != nil {
 				atomic.AddInt64(&a.subtaskFailed, int64(len(g.Diffs)))
 				class, reason := classifyItemError(err)
+				stage := reviewFailureStage(err)
 				for _, d := range g.Diffs {
 					fingerprint := reviewItemFingerprint(a.reviewMode(), d)
-					a.markFailed(d, class, reason)
+					a.markFailed(d, class, stage+": "+reason)
 					a.session.RecordReviewItemFailed(d.NewPath, d.OldPath, d.NewPath, fingerprint, err.Error())
+					a.failedMu.Lock()
+					a.failedPaths[d.NewPath] = d
+					shouldRetry := !a.retriedPaths[d.NewPath] && (class == session.FailureTimeout || class == session.FailureProvider)
+					a.failedMu.Unlock()
+					if shouldRetry {
+						a.retryFailedFiles(groupCtx, []model.Diff{d})
+					}
 				}
-				fmt.Fprintf(stdout.Writer(), "[ocr] Subtask error for group %q: %v\n", g.Label, err)
+				fmt.Fprintf(stdout.Writer(), "[ocr] Subtask error for group %q (%s): %v\n", g.Label, stage, err)
 				telemetry.ErrorEvent(groupCtx, "subtask.error", err,
 					telemetry.AnyToAttr("group.label", g.Label))
-				a.recordWarning("subtask_error", g.Label, err.Error())
+				a.recordWarning("subtask_error", g.Label, stage+": "+err.Error())
 				return
 			}
 			if !completed {
@@ -789,10 +805,16 @@ dispatchLoop:
 						fingerprint := reviewItemFingerprint(a.reviewMode(), d)
 						if comments := a.args.CommentCollector.CommentsForPath(d.NewPath); len(comments) > 0 {
 							a.markCompleted(d)
+							a.failedMu.Lock()
+							delete(a.failedPaths, d.NewPath)
+							a.failedMu.Unlock()
 							a.session.RecordReviewItemDone(d.NewPath, d.OldPath, d.NewPath, fingerprint, comments)
 							continue
 						}
-						a.markFailed(d, stop.class, stop.reason)
+						a.markFailed(d, stop.class, "main_review: "+stop.reason)
+						a.failedMu.Lock()
+						a.failedPaths[d.NewPath] = d
+						a.failedMu.Unlock()
 						if stop.checkpoint != "" {
 							a.session.RecordReviewItemFailed(d.NewPath, d.OldPath, d.NewPath, fingerprint, stop.checkpoint)
 						}
@@ -811,6 +833,9 @@ dispatchLoop:
 							telemetry.AnyToAttr("group.label", g.Label))
 						a.recordWarning("subtask_error", g.Label, stopErr.Error())
 					}
+					if failedCount > 0 && stop.class == session.FailureTimeout {
+						a.retryFailedFiles(groupCtx, g.Diffs)
+					}
 				}
 				return
 			}
@@ -818,6 +843,9 @@ dispatchLoop:
 				fingerprint := reviewItemFingerprint(a.reviewMode(), d)
 				comments := a.args.CommentCollector.CommentsForPath(d.NewPath)
 				a.markCompleted(d)
+				a.failedMu.Lock()
+				delete(a.failedPaths, d.NewPath)
+				a.failedMu.Unlock()
 				a.session.RecordReviewItemDone(d.NewPath, d.OldPath, d.NewPath, fingerprint, comments)
 			}
 		}(group)
@@ -855,6 +883,67 @@ dispatchLoop:
 	}
 
 	return a.args.CommentCollector.Comments(), nil
+}
+
+func (a *Agent) retryFailedFiles(ctx context.Context, diffs []model.Diff) {
+	var retry []model.Diff
+	a.failedMu.Lock()
+	for _, d := range diffs {
+		alreadyRetried := a.retriedPaths[d.NewPath]
+		a.retriedPaths[d.NewPath] = true
+		if alreadyRetried {
+			continue
+		}
+		if failed, ok := a.failedPaths[d.NewPath]; ok {
+			retry = append(retry, failed)
+		}
+	}
+	a.failedMu.Unlock()
+	if len(retry) == 0 || ctx.Err() != nil {
+		return
+	}
+	fmt.Fprintf(stdout.Writer(), "[ocr] Retrying %d failed file(s) once\n", len(retry))
+	for _, d := range retry {
+		if err := a.session.Manifest().RetryFailed(a.manifestItemID(d)); err != nil {
+			a.recordWarning("retry_error", d.NewPath, "retry preparation failed")
+			continue
+		}
+		group := FileGroup{Label: d.NewPath, Diffs: []model.Diff{d}}
+		a.session.RecordReviewItemsStarted(d.NewPath)
+		var groupCtx context.Context
+		var cancel context.CancelFunc
+		timeout := time.Duration(a.args.ConcurrentTaskTimeout) * time.Minute * time.Duration(a.args.Template.ReviewRounds())
+		if timeout > 0 {
+			groupCtx, cancel = context.WithTimeout(ctx, timeout)
+		} else {
+			groupCtx = ctx
+		}
+		completed, stop, err := a.executeGroupSubtask(groupCtx, group)
+		if cancel != nil {
+			cancel()
+		}
+		fingerprint := reviewItemFingerprint(a.reviewMode(), d)
+		switch {
+		case err != nil:
+			class, reason := classifyItemError(err)
+			a.markFailed(d, class, reviewFailureStage(err)+": "+reason)
+			a.session.RecordReviewItemFailed(d.NewPath, d.OldPath, d.NewPath, fingerprint, err.Error())
+			a.recordWarning("retry_error", d.NewPath, reviewFailureStage(err)+": "+err.Error())
+		case completed:
+			comments := a.args.CommentCollector.CommentsForPath(d.NewPath)
+			a.markCompleted(d)
+			a.session.RecordReviewItemDone(d.NewPath, d.OldPath, d.NewPath, fingerprint, comments)
+			a.failedMu.Lock()
+			delete(a.failedPaths, d.NewPath)
+			a.failedMu.Unlock()
+		case stop != nil:
+			a.markFailed(d, stop.class, "main_review retry: "+stop.reason)
+			a.session.RecordReviewItemFailed(d.NewPath, d.OldPath, d.NewPath, fingerprint, stop.checkpoint)
+		default:
+			a.markFailed(d, session.FailureUnknown, "main_review retry did not complete")
+			a.session.RecordReviewItemFailed(d.NewPath, d.OldPath, d.NewPath, fingerprint, "retry did not complete")
+		}
+	}
 }
 
 func (a *Agent) recordContextFailure(err error) {
@@ -1208,6 +1297,22 @@ func classifyItemError(err error) (session.FailureClass, string) {
 	}
 }
 
+// reviewFailureStage identifies the pipeline phase that produced an error.
+// The label is stable and safe to expose in warnings and manifest reasons.
+func reviewFailureStage(err error) string {
+	message := strings.ToLower(err.Error())
+	switch {
+	case strings.Contains(message, "plan"):
+		return "plan"
+	case strings.Contains(message, "file "), strings.Contains(message, "tool"), strings.Contains(message, "git"):
+		return "tool_or_file_read"
+	case strings.Contains(message, "filter"):
+		return "review_filter"
+	default:
+		return "main_review"
+	}
+}
+
 // classifyMainLoopStop maps a non-error, non-completed main-loop stop to an item
 // failure class and a safe reason. Only the configured limits — the
 // max-tool-request rounds and the aggregate token budget — are declared budget
@@ -1429,6 +1534,7 @@ func (a *Agent) executeGroupSubtask(ctx context.Context, g FileGroup) (bool, *su
 		var err error
 		planResult, err = a.executeGroupPlanPhase(ctx, g, concatenatedDiffs, changeFilesExcludingGroup, rule)
 		if err != nil {
+			err = fmt.Errorf("plan phase: %w", err)
 			fmt.Fprintf(stdout.Writer(), "[ocr] Plan phase failed for group %q: %v (continuing without plan)\n", groupKey, err)
 			telemetry.Eventf(ctx, "plan.failed", err.Error(),
 				telemetry.AnyToAttr("group.label", groupKey))

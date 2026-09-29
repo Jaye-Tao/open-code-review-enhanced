@@ -488,7 +488,7 @@ func TestGroupDiffs_SingleFileSkipsWithGroupingDisabled(t *testing.T) {
 func TestGroupDiffs_BundleSplitByMaxFilesPerGroup(t *testing.T) {
 	// GroupingMinFiles raised past maxFilesPerGroup, which is the case the bundle's
 	// enforceMaxFilesPerGroup call exists to guard: the bundle is chopped into
-	// 10-file chunks, so the shape is neither one group nor one per file.
+	// 5-file chunks, so the shape is neither one group nor one per file.
 	diffs := make([]model.Diff, 12)
 	for i := range diffs {
 		diffs[i] = model.Diff{NewPath: fmt.Sprintf("f%d.go", i), Insertions: 1, Diff: "d"}
@@ -503,11 +503,11 @@ func TestGroupDiffs_BundleSplitByMaxFilesPerGroup(t *testing.T) {
 	if client.called {
 		t.Error("grouping LLM was called for a below-threshold change set")
 	}
-	if len(result.groups) != 2 {
-		t.Fatalf("got %d groups, want 2 (10 + 2)", len(result.groups))
+	if len(result.groups) != 3 {
+		t.Fatalf("got %d groups, want 3 (5 + 5 + 2)", len(result.groups))
 	}
-	if !strings.Contains(buf.String(), "reviewing as 2 groups") {
-		t.Errorf("log = %q, want it to name the 2-group shape", buf.String())
+	if !strings.Contains(buf.String(), "reviewing as 3 groups") {
+		t.Errorf("log = %q, want it to name the 3-group shape", buf.String())
 	}
 }
 

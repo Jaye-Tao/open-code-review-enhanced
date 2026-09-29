@@ -123,7 +123,7 @@ staged + unstaged + untracked changes in the current directory's repo.
 | `--default-prompt` | — | `false` | Use the bundled default review prompt without resolving its file path. Can be combined with `--background`, but not with `--background-file`. |
 | `--exclude <patterns>` | — | — | Comma-separated gitignore-style patterns to exclude; merged with the `excludes` section of `rule.json` |
 | `--concurrency <n>` | — | `8` | Maximum number of subtasks reviewed in parallel. |
-| `--timeout <minutes>` | — | `15` | Per-subtask deadline. `0` disables the timeout. Scaled linearly by the number of effort review rounds (e.g. 15/30/45 min for low/medium/high). |
+| `--timeout <minutes>` | — | `30` | Per-subtask deadline. `0` disables the timeout. Scaled linearly by the number of effort review rounds (e.g. 30/60/90 min for low/medium/high). |
 | `--effort <level>` | — | `medium` | Review effort preset: `low` (1 review round), `medium` (2 rounds), `high` (3 rounds). More rounds improve recall at proportionally higher cost. Overrides the saved `effort` setting for this run. |
 | `--rule <path>` | — | — | Path to a custom JSON review rule file. Overrides the project-level and global `rule.json`. |
 | `--max-tools <n>` | — | template default | Max tool-call rounds per subtask. `0` uses the template default (`100`); values 1–49 are clamped up to `50`. The flag only ever *raises* the cap — a value below the template default is ignored. |
