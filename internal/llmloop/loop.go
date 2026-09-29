@@ -48,7 +48,8 @@ type Deps struct {
 	// excluded would point the reader at a file this review never covered.
 	// When nil, cross-file re-filing is skipped and only same-file resolution
 	// applies.
-	AllDiffs func() []model.Diff
+	AllDiffs         func() []model.Diff
+	AttributeComment func(context.Context, model.LlmComment, *model.Diff) *model.CodeAttribution
 
 	// NewRequestMeta builds the retry-report identity for one logical LLM
 	// request. Non-nil only for review: the retry report describes ocr review,
@@ -762,6 +763,9 @@ func (r *Runner) executeToolCall(ctx context.Context, taskKey string, call llm.T
 							}
 						}
 					}
+				}
+				if r.deps.AttributeComment != nil {
+					cm.CodeAttribution = r.deps.AttributeComment(rctx, *cm, d)
 				}
 				r.deps.CommentCollector.Add(*cm)
 			}

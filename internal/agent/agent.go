@@ -201,6 +201,7 @@ type Agent struct {
 	// and consumed by finalizeManifest to fill the manifest input/repository.
 	inputResolution    diff.InputResolution
 	repoRemoteIdentity string
+	attributor         *diff.Attributor
 }
 
 // ResumeInfo summarizes file-level reuse for a resumed review.
@@ -250,6 +251,12 @@ func New(args Args) *Agent {
 		Session:           args.Session,
 		DiffLookup:        a.findDiff,
 		AllDiffs:          a.allDiffs,
+		AttributeComment: func(ctx context.Context, cm model.LlmComment, d *model.Diff) *model.CodeAttribution {
+			if a.attributor == nil {
+				return nil
+			}
+			return a.attributor.Attribute(ctx, cm, d)
+		},
 		// Non-nil only here: the same Runner serves scan, whose requests must
 		// stay out of the retry report. See newRequestMeta.
 		NewRequestMeta:  a.newRequestMeta,
@@ -598,6 +605,10 @@ func (a *Agent) loadDiffs(ctx context.Context) error {
 	// dispatch time, even on a later skipped or failed path.
 	a.inputResolution = provider.ResolveInput(ctx)
 	a.repoRemoteIdentity = provider.RemoteIdentity(ctx)
+	a.attributor = diff.NewAttributor(a.args.RepoDir, a.inputResolution, a.args.GitRunner)
+	if a.reviewMode() == "workspace" {
+		a.attributor.MarkWorkspace()
+	}
 
 	for i := range a.diffs {
 		d := &a.diffs[i]

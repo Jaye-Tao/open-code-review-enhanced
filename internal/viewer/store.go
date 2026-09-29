@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/alibaba/open-code-review/internal/model"
 	"github.com/alibaba/open-code-review/internal/session"
 )
 
@@ -517,6 +518,7 @@ type ReviewComment struct {
 	EndLine             int
 	Category            string // bug, security, performance, maintainability, test, style, documentation, other
 	Severity            string // critical, high, medium, low
+	CodeAttribution     *model.CodeAttribution
 	MarkID              string `json:"-"`
 	ID                  string `json:"-"`
 	Reused              bool   `json:"-"`
@@ -1005,6 +1007,11 @@ func LoadSession(root, encodedRepo, sessionID string) (*ViewSession, error) {
 					}
 					if v, ok := cm["severity"].(string); ok {
 						rc.Severity = v
+					}
+					if raw, ok := cm["code_attribution"]; ok {
+						if data, err := json.Marshal(raw); err == nil {
+							_ = json.Unmarshal(data, &rc.CodeAttribution)
+						}
 					}
 					rc.MarkID = commentMarkID(recUUID, ci, rc, markOccurrences)
 					rc.ID = strconv.Itoa(len(vs.Comments) + 1)

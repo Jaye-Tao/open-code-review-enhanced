@@ -60,7 +60,7 @@ func ExportSessionMarkdownWithLanguage(out io.Writer, root, repo, id, language s
 			b.WriteString(markdownBlock(fmt.Sprintf("Path: %s\nLines: %d-%d\nSeverity: %s\nCategory: %s", c.FilePath, c.StartLine, c.EndLine, c.Severity, c.Category)))
 		} else {
 			fmt.Fprintf(&b, "### 问题 %d\n\n", i+1)
-			b.WriteString(markdownBlock(fmt.Sprintf("路径：%s\n行号：%d-%d\n严重程度：%s\n类别：%s", c.FilePath, c.StartLine, c.EndLine, severityLabel(c.Severity), categoryLabel(c.Category))))
+			b.WriteString(markdownBlock(fmt.Sprintf("路径：%s\n行号：%d-%d\n严重程度：%s\n类别：%s\nLast modified by: %s", c.FilePath, c.StartLine, c.EndLine, severityLabel(c.Severity), categoryLabel(c.Category), c.CodeAttribution.Summary())))
 		}
 		b.WriteString(markdownBlock(c.Content))
 		if c.ExistingCode != "" {
