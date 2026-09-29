@@ -3,6 +3,12 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Derive asset URLs from the document's script URL so the bundle also works
+// when Nginx serves the site below a second-level path (for example,
+// https://example.com/reviews/). A root-relative public path would drop that
+// prefix and make every static asset request return 404.
+const publicPath = process.env.WEBPACK_PUBLIC_PATH || 'auto';
+
 module.exports = {
   mode: isProduction ? 'production' : 'development',
   entry: './src/index.tsx',
@@ -10,7 +16,7 @@ module.exports = {
     path: path.resolve(__dirname, 'dist'),
     filename: '[name].[contenthash:8].bundle.js',
     chunkFilename: '[name].[contenthash:8].chunk.js',
-    publicPath: '/',
+    publicPath,
     clean: true
   },
   optimization: {
