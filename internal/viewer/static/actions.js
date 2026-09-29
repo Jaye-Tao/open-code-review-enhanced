@@ -78,6 +78,30 @@
         return dialog;
     }
 
+    async function copyValue(value, label, opener) {
+        try {
+            if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(value);
+            else {
+                const input = document.createElement('textarea');
+                input.value = value;
+                input.className = 'clipboard-input';
+                document.body.append(input);
+                input.select();
+                try { if (!document.execCommand('copy')) throw new Error('Clipboard unavailable'); }
+                finally { input.remove(); if (opener) opener.focus(); }
+            }
+            notify(label + '已复制');
+        } catch (_) {
+            const input = document.createElement('textarea');
+            input.value = value;
+            input.readOnly = true;
+            input.className = 'copy-path-input';
+            input.setAttribute('aria-label', label);
+            openDialog({ title: '复制' + label, description: '浏览器暂时无法写入剪贴板，请选中后手动复制。', content: input });
+            input.focus(); input.select();
+        }
+    }
+
     document.querySelectorAll('[data-copy-path]').forEach(el => {
         const copyLabel = '完整路径';
         const value = el.dataset.copyPath || el.dataset.sessionId || el.title;
@@ -91,30 +115,44 @@
         copyTarget.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
-            const path = value;
-            try {
-                if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(path);
-                else {
-                    const input = document.createElement('textarea');
-                    input.value = path;
-                    input.className = 'clipboard-input';
-                    document.body.append(input);
-                    input.select();
-                    try { if (!document.execCommand('copy')) throw new Error('Clipboard unavailable'); }
-                    finally { input.remove(); copyTarget.focus(); }
-                }
-                notify(copyLabel + '已复制');
-            } catch (_) {
-                const input = document.createElement('textarea');
-                input.value = path;
-                input.readOnly = true;
-                input.className = 'copy-path-input';
-                input.setAttribute('aria-label', copyLabel);
-                openDialog({ title: '复制' + copyLabel, description: '浏览器暂时无法写入剪贴板，请选中后手动复制。', content: input });
-                input.focus(); input.select();
-            }
+            await copyValue(value, copyLabel, copyTarget);
         });
     });
+
+    const sessionIDs = document.querySelectorAll('.session-id[title], .session-id-value[data-session-id]');
+    if (sessionIDs.length) {
+        const popup = document.createElement('button');
+        popup.type = 'button';
+        popup.className = 'session-copy-popup';
+        popup.textContent = '复制会话 ID';
+        popup.hidden = true;
+        document.body.append(popup);
+        let activeID;
+        let hideTimer;
+        const showPopup = el => {
+            clearTimeout(hideTimer);
+            activeID = el;
+            const bounds = el.getBoundingClientRect();
+            popup.style.left = Math.max(8, Math.min(window.innerWidth - 140, bounds.left)) + 'px';
+            popup.style.top = Math.min(window.innerHeight - 40, bounds.bottom + 6) + 'px';
+            popup.hidden = false;
+        };
+        const scheduleHide = () => {
+            hideTimer = setTimeout(() => { if (activeID) { popup.hidden = true; activeID = null; } }, 180);
+        };
+        sessionIDs.forEach(el => {
+            el.addEventListener('mouseenter', () => showPopup(el));
+            el.addEventListener('mouseleave', scheduleHide);
+            el.addEventListener('focus', () => showPopup(el));
+            el.addEventListener('blur', scheduleHide);
+        });
+        popup.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+        popup.addEventListener('mouseleave', scheduleHide);
+        popup.addEventListener('click', async () => {
+            if (!activeID) return;
+            await copyValue(activeID.dataset.sessionId || activeID.title, '会话 ID', popup);
+        });
+    }
 
     document.querySelectorAll('[data-delete-session]').forEach(button => {
         button.addEventListener('click', () => {
