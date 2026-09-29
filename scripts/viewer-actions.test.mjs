@@ -28,8 +28,8 @@ test('path copy exposes the complete path and a manual fallback', () => {
     assert.match(source, /navigator\.clipboard/);
 });
 
-test('session IDs use their complete value for copy actions', () => {
-    assert.match(source, /\.session-id\[title\]/);
-    assert.match(source, /data-session-id/);
-    assert.match(source, /const value = el\.dataset\.copyPath \|\| el\.dataset\.sessionId \|\| el\.title/);
+test('session ID links are not intercepted by copy actions', () => {
+    assert.match(source, /querySelectorAll\('\[data-copy-path\]'\)/);
+    assert.doesNotMatch(source, /session-id\[title\]/);
+    assert.doesNotMatch(source, /\[data-session-id\]/);
 });

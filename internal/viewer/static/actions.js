@@ -78,19 +78,17 @@
         return dialog;
     }
 
-    document.querySelectorAll('[data-copy-path], .session-id[title], [data-session-id]').forEach(el => {
-        const isSessionID = el.matches('.session-id, [data-session-id]');
-        const copyLabel = isSessionID ? '会话 ID' : '完整路径';
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'copy-path-button';
-        button.textContent = '复制';
-        button.title = isSessionID ? '复制会话 ID' : '复制完整路径';
+    document.querySelectorAll('[data-copy-path]').forEach(el => {
+        const copyLabel = '完整路径';
         const value = el.dataset.copyPath || el.dataset.sessionId || el.title;
-        button.setAttribute('aria-label', button.title + '：' + value);
-        const buttonTarget = el.matches('.session-id, [data-session-id]') && el.parentElement?.tagName === 'A' ? el.parentElement : el;
-        buttonTarget.after(button);
-        button.addEventListener('click', async event => {
+        const copyTarget = document.createElement('button');
+        copyTarget.type = 'button';
+        copyTarget.className = 'copy-path-button';
+        copyTarget.textContent = '复制';
+        copyTarget.title = '复制完整路径';
+        copyTarget.setAttribute('aria-label', copyTarget.title + '：' + value);
+        el.after(copyTarget);
+        copyTarget.addEventListener('click', async event => {
             event.preventDefault();
             event.stopPropagation();
             const path = value;
@@ -103,7 +101,7 @@
                     document.body.append(input);
                     input.select();
                     try { if (!document.execCommand('copy')) throw new Error('Clipboard unavailable'); }
-                    finally { input.remove(); button.focus(); }
+                    finally { input.remove(); copyTarget.focus(); }
                 }
                 notify(copyLabel + '已复制');
             } catch (_) {
