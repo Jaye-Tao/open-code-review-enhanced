@@ -5,8 +5,17 @@ package model
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 )
+
+var attributionLine = regexp.MustCompile(`(?m)^\s*(代码段最后修改人|Code segment last modified by|Last modified by)\s*[:：].*\r?\n?`) // allow-non-english: matches the localized review field
+
+// RemoveAttributionLine removes the model-written copy of the attribution
+// field. The application owns this field because only it can verify Git data.
+func RemoveAttributionLine(content string) string {
+	return strings.TrimSpace(attributionLine.ReplaceAllString(content, ""))
+}
 
 // CodeAttribution is Git evidence for routing a finding, not proof of who
 // introduced its root cause. It is populated by the application, never the LLM.
