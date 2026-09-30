@@ -49,6 +49,7 @@ document.querySelectorAll('.response-text').forEach(function(el) {
     let query = '';
     let activeSeverity = 'all';
     let activeCategory = 'all';
+    let activeMark = 'all';
 
     // localStorage throws when storage is unavailable (private browsing with
     // quota exceeded, storage disabled by policy); the toggle then just uses
@@ -80,14 +81,17 @@ document.querySelectorAll('.response-text').forEach(function(el) {
 
     function cardMatches(card) {
         const marked = Boolean(card.dataset.mark);
-        return (!hideMarked || !marked) && matchesFilters(card);
+        const markMatches = activeMark === 'all' || (activeMark === 'unmarked' ? !marked : card.dataset.mark === activeMark);
+        // Explicit status filters take priority without changing the saved preference.
+        const hideMarkedMatches = activeMark !== 'all' || !hideMarked || !marked;
+        return markMatches && hideMarkedMatches && matchesFilters(card);
     }
 
     function updateFilterState() {
         filters.forEach(function(filter) {
             const kind = filter.dataset.filterKind;
-            const activeValue = kind === 'severity' ? activeSeverity : activeCategory;
-            const isActive = activeValue === filter.dataset.filterValue;
+            const selectedValue = { severity: activeSeverity, category: activeCategory, mark: activeMark }[kind];
+            const isActive = selectedValue === filter.dataset.filterValue;
             filter.classList.toggle('is-active', isActive);
             filter.setAttribute('aria-pressed', String(isActive));
         });
@@ -105,7 +109,7 @@ document.querySelectorAll('.response-text').forEach(function(el) {
                 return;
             }
             markedCount++;
-            if (hideMarked && matchesFilters(card)) {
+            if (activeMark === 'all' && hideMarked && matchesFilters(card)) {
                 hiddenByMarks++;
             }
         });
@@ -133,6 +137,21 @@ document.querySelectorAll('.response-text').forEach(function(el) {
                 marksCount.textContent = marksText;
             }
         }
+
+        const markCounts = { all: 0, fixed: 0, ignored: 0, unmarked: 0 };
+        document.querySelectorAll('[data-comment-card]').forEach(function(card) {
+            markCounts.all++;
+            const state = card.dataset.mark;
+            if (state === 'fixed' || state === 'ignored') {
+                markCounts[state]++;
+            } else {
+                markCounts.unmarked++;
+            }
+        });
+        Object.keys(markCounts).forEach(function(state) {
+            const count = document.querySelector('[data-mark-filter-count="' + state + '"]');
+            if (count) count.textContent = markCounts[state];
+        });
     }
 
     const findingsPager = ocrPager({
@@ -157,8 +176,10 @@ document.querySelectorAll('.response-text').forEach(function(el) {
             const value = filter.dataset.filterValue;
             if (kind === 'severity') {
                 activeSeverity = activeSeverity === value ? 'all' : value;
-            } else {
+            } else if (kind === 'category') {
                 activeCategory = activeCategory === value ? 'all' : value;
+            } else if (kind === 'mark') {
+                activeMark = activeMark === value ? 'all' : value;
             }
             updateFilterState();
         });

@@ -166,6 +166,13 @@
         {{if .Other}}<button type="button" class="comment-filter-chip cat-other" data-filter-kind="category" data-filter-value="other" aria-pressed="false">其他 ({{.Other}})</button>{{end}}
     </div>
     {{end}}
+    <div class="comment-filter-bar" aria-label="按标记状态筛选">
+        <span class="comment-filter-label">标记状态</span>
+        <button type="button" class="comment-filter-chip filter-all is-active" data-filter-kind="mark" data-filter-value="all" aria-pressed="true">全部 (<span data-mark-filter-count="all">{{len $.Session.Comments}}</span>)</button>
+        <button type="button" class="comment-filter-chip mark-filter-fixed" data-filter-kind="mark" data-filter-value="fixed" aria-pressed="false">已修复 (<span data-mark-filter-count="fixed">0</span>)</button>
+        <button type="button" class="comment-filter-chip mark-filter-ignored" data-filter-kind="mark" data-filter-value="ignored" aria-pressed="false">已忽略 (<span data-mark-filter-count="ignored">0</span>)</button>
+        <button type="button" class="comment-filter-chip mark-filter-unmarked" data-filter-kind="mark" data-filter-value="unmarked" aria-pressed="false">未标记 (<span data-mark-filter-count="unmarked">{{len $.Session.Comments}}</span>)</button>
+    </div>
     </div>
     <div class="marks-row">
         <span class="comment-filter-label" data-marks-count aria-live="polite"></span>

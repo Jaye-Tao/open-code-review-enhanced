@@ -9,6 +9,7 @@
     const select = document.querySelector(selector);
 
     const messages = {
+        '标记状态': 'Mark status', '按标记状态筛选': 'Filter by mark state', '未标记': 'Unmarked',
         '代码审核工作台': 'Code Review Workbench', '审核工作台': 'Review Workspace', '代码仓库': 'Repositories', '审核会话': 'Review Sessions', '审核会话详情': 'Review session details', '审核分析': 'Review analysis',
         '查看审核结果，或选择两个会话进行问题变化对比。': 'Review results or compare changes between two sessions.', '选择仓库查看审核会话、问题明细和历史对比。': 'Choose a repository to view sessions, findings and history.',
         '返回仓库': 'Back to repositories', '返回会话': 'Back to sessions', '查看会话': 'View sessions', '搜索仓库': 'Search repositories', '搜索仓库名称': 'Search repository names', '搜索会话': 'Search sessions', '搜索会话、分支或模型': 'Search sessions, branches, or models', '搜索问题': 'Search findings', '文件路径或问题描述': 'File path or finding description',

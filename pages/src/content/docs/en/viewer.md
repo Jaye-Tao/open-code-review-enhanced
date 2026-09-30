@@ -186,6 +186,13 @@ badges. Chips on the filter bar narrow the list by severity or category.
 
 ### Marking findings as you fix them
 
+Below the finding type filters, **Mark status** offers **All / Fixed / Ignored /
+Unmarked**, with totals for the current session independent of other filters and
+pagination. Counts update immediately when marks change. Combine this filter with
+severity, finding type, and search. Selecting a specific status temporarily takes
+priority over **Hide marked**; returning to **All** restores the saved hiding
+preference without changing it. Marks still do not carry into a new review session.
+
 Each card carries three buttons — **Fixed** / **Ignored** /
 **Clear** — that set a per-comment mark:
 
