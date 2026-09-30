@@ -767,7 +767,7 @@ func (r *Runner) executeToolCall(ctx context.Context, taskKey string, call llm.T
 				if r.deps.AttributeComment != nil {
 					cm.CodeAttribution = r.deps.AttributeComment(rctx, *cm, d)
 				}
-				cm.Content = model.RemoveAttributionLine(cm.Content)
+				cm.Content = model.RemoveFindingHeading(model.RemoveAttributionLine(cm.Content))
 				r.deps.CommentCollector.Add(*cm)
 			}
 		}
