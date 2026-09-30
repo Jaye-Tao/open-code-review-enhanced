@@ -10,11 +10,19 @@ import (
 )
 
 var attributionLine = regexp.MustCompile(`(?m)^\s*(代码段最后修改人|Code segment last modified by|Last modified by)\s*[:：].*\r?\n?`) // allow-non-english: matches the localized review field
+var findingHeading = regexp.MustCompile(`(?mi)^\s*(问题|Finding)\s+\d+\s*\r?\n`)
 
 // RemoveAttributionLine removes the model-written copy of the attribution
 // field. The application owns this field because only it can verify Git data.
 func RemoveAttributionLine(content string) string {
 	return strings.TrimSpace(attributionLine.ReplaceAllString(content, ""))
+}
+
+// RemoveFindingHeading removes a redundant model-written issue number heading.
+// The viewer already displays the finding ID, so the body should begin with
+// the review fields themselves.
+func RemoveFindingHeading(content string) string {
+	return strings.TrimSpace(findingHeading.ReplaceAllString(content, ""))
 }
 
 // CodeAttribution is Git evidence for routing a finding, not proof of who

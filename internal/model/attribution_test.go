@@ -12,3 +12,23 @@ func TestRemoveAttributionLine(t *testing.T) {
 		t.Fatalf("RemoveAttributionLine = %q, want %q", got, want)
 	}
 }
+
+func TestRemoveFindingHeading(t *testing.T) {
+	tests := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{name: "Chinese heading", in: "问题 1\n标题：空指针风险", want: "标题：空指针风险"},
+		{name: "multi digit heading", in: "\n问题 12\r\n标题：风险", want: "标题：风险"},
+		{name: "English heading", in: "Finding 3\nTitle: risk", want: "Title: risk"},
+		{name: "body text unchanged", in: "标题：问题 1 会导致错误", want: "标题：问题 1 会导致错误"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RemoveFindingHeading(tt.in); got != tt.want {
+				t.Fatalf("RemoveFindingHeading = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
