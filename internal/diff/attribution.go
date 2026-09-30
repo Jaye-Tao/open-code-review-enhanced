@@ -6,7 +6,6 @@ package diff
 import (
 	"context"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -45,29 +44,10 @@ func (a *Attributor) Attribute(ctx context.Context, cm model.LlmComment, d *mode
 	if d == nil || cm.StartLine < 1 || cm.EndLine < cm.StartLine || cm.ExistingCode == "" {
 		return &result
 	}
-	target := splitAndNormalize(cm.ExistingCode)
-	if len(target) == 0 {
-		return &result
-	}
-	newLines := strings.Split(d.NewFileContent, "\n")
-	if !d.IsDeleted && cm.EndLine <= len(newLines) && slices.Equal(target, splitAndNormalize(strings.Join(newLines[cm.StartLine-1:cm.EndLine], "\n"))) {
-		result.Ref, result.Path, result.Side = a.input.ResolvedHead, d.NewPath, "new"
+	if d.IsDeleted || d.NewPath == "/dev/null" {
+		result.Ref, result.Path, result.Side = a.input.ResolvedBase, d.OldPath, "old"
 	} else {
-		for _, hunk := range ParseHunks(d.Diff) {
-			var excerpt []string
-			for _, line := range extractSideLines(&hunk, false) {
-				if line.lineNum >= cm.StartLine && line.lineNum <= cm.EndLine && line.content != "" {
-					excerpt = append(excerpt, line.content)
-				}
-			}
-			if slices.Equal(target, excerpt) {
-				result.Ref, result.Path, result.Side = a.input.ResolvedBase, d.OldPath, "old"
-				break
-			}
-		}
-	}
-	if result.Side == "" {
-		return &result
+		result.Ref, result.Path, result.Side = a.input.ResolvedHead, d.NewPath, "new"
 	}
 	if a.workspace || a.input.ResolvedHead == "" {
 		result.Status, result.Reason = "uncommitted", "workspace_review"
