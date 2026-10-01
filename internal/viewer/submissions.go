@@ -454,10 +454,38 @@ func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *rev
 }
 
 func sameOriginRequest(r *http.Request) bool {
-	origin, err := url.Parse(r.Header.Get("Origin"))
-	scheme := "http"
-	if r.TLS != nil {
-		scheme = "https"
+	// A reverse proxy terminates TLS and may rewrite Host. Prefer its
+	// forwarded origin metadata when present, while retaining the direct
+	// request values for local deployments.
+	scheme := firstForwarded(r.Header.Get("X-Forwarded-Proto"))
+	if scheme == "" {
+		scheme = "http"
+		if r.TLS != nil {
+			scheme = "https"
+		}
 	}
-	return err == nil && origin.Scheme == scheme && origin.Host == r.Host && origin.User == nil && origin.Path == ""
+	host := firstForwarded(r.Header.Get("X-Forwarded-Host"))
+	if host == "" {
+		host = r.Host
+	}
+	if value := r.Header.Get("Origin"); value != "" {
+		origin, err := url.Parse(value)
+		if err == nil && strings.EqualFold(origin.Scheme, scheme) && strings.EqualFold(origin.Host, host) && origin.User == nil && origin.Path == "" {
+			return true
+		}
+	}
+	if value := r.Header.Get("Referer"); value != "" {
+		origin, err := url.Parse(value)
+		if err == nil && strings.EqualFold(origin.Scheme, scheme) && strings.EqualFold(origin.Host, host) && origin.User == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func firstForwarded(value string) string {
+	if comma := strings.IndexByte(value, ','); comma >= 0 {
+		value = value[:comma]
+	}
+	return strings.TrimSpace(value)
 }
