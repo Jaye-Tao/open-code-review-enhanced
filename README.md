@@ -223,12 +223,12 @@ This project exists thanks to all the people who contribute. See [CONTRIBUTING.m
 
 [Apache-2.0](LICENSE) — Copyright 2026 Alibaba
 
-## Version 1.1.5-test
+## Version 1.1.6-test
 
 Adds finding mark filters in the viewer, improves Git author attribution, and removes redundant finding number headings.
 
-[1.1.5-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.5-test/docs/release-notes-1.1.5-test.md)
+[1.1.6-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.6-test/docs/release-notes-1.1.6-test.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.1.5-test
+npm install -g open-code-review-enhanced@1.1.6-test
 ```

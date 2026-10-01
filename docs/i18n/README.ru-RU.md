@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
 
-## Версия 1.1.5-test
+## Версия 1.1.6-test
 
 В просмотрщике добавлены фильтры пометок замечаний, улучшено отображение авторства Git и удалены повторяющиеся заголовки с номерами замечаний.
 
-[1.1.5-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.5-test/docs/release-notes-1.1.5-test.md)
+[1.1.6-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.6-test/docs/release-notes-1.1.6-test.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.1.5-test
+npm install -g open-code-review-enhanced@1.1.6-test
 ```

@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -454,33 +455,75 @@ func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *rev
 }
 
 func sameOriginRequest(r *http.Request) bool {
-	// A reverse proxy terminates TLS and may rewrite Host. Prefer its
-	// forwarded origin metadata when present, while retaining the direct
-	// request values for local deployments.
+	// A reverse proxy may hide the public scheme and host. Prefer forwarded
+	// metadata, then use agreement between Origin and Referer as a safe fallback.
 	scheme := firstForwarded(r.Header.Get("X-Forwarded-Proto"))
+	host := firstForwarded(r.Header.Get("X-Forwarded-Host"))
+	port := firstForwarded(r.Header.Get("X-Forwarded-Port"))
+	if forwarded := firstForwarded(r.Header.Get("Forwarded")); forwarded != "" {
+		for _, part := range strings.Split(forwarded, ";") {
+			key, value, ok := strings.Cut(strings.TrimSpace(part), "=")
+			if !ok {
+				continue
+			}
+			value = strings.Trim(strings.TrimSpace(value), "\"")
+			switch strings.ToLower(key) {
+			case "proto":
+				if scheme == "" {
+					scheme = value
+				}
+			case "host":
+				if host == "" {
+					host = value
+				}
+			}
+		}
+	}
 	if scheme == "" {
 		scheme = "http"
 		if r.TLS != nil {
 			scheme = "https"
 		}
 	}
-	host := firstForwarded(r.Header.Get("X-Forwarded-Host"))
 	if host == "" {
 		host = r.Host
 	}
+	if port != "" && !strings.Contains(host, ":") {
+		host = net.JoinHostPort(host, port)
+	}
+	var originURL, refererURL *url.URL
 	if value := r.Header.Get("Origin"); value != "" {
 		origin, err := url.Parse(value)
-		if err == nil && strings.EqualFold(origin.Scheme, scheme) && strings.EqualFold(origin.Host, host) && origin.User == nil && origin.Path == "" {
+		if err == nil {
+			originURL = origin
+		}
+		if err == nil && sameOriginURL(origin, scheme, host) && origin.Path == "" {
 			return true
 		}
 	}
 	if value := r.Header.Get("Referer"); value != "" {
 		origin, err := url.Parse(value)
-		if err == nil && strings.EqualFold(origin.Scheme, scheme) && strings.EqualFold(origin.Host, host) && origin.User == nil {
+		if err == nil {
+			refererURL = origin
+		}
+		if err == nil && sameOriginURL(origin, scheme, host) {
 			return true
 		}
 	}
-	return false
+	return originURL != nil && refererURL != nil && sameBrowserOrigin(originURL, refererURL)
+}
+func sameOriginURL(origin *url.URL, scheme, host string) bool {
+	if origin == nil || origin.User != nil || !strings.EqualFold(origin.Scheme, scheme) {
+		return false
+	}
+	want, err := url.Parse("//" + host)
+	return err == nil && strings.EqualFold(origin.Hostname(), want.Hostname()) && origin.Port() == want.Port()
+}
+
+func sameBrowserOrigin(origin, referer *url.URL) bool {
+	return origin.User == nil && referer.User == nil &&
+		strings.EqualFold(origin.Scheme, referer.Scheme) &&
+		strings.EqualFold(origin.Host, referer.Host)
 }
 
 func firstForwarded(value string) string {
