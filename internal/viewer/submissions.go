@@ -424,10 +424,6 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	if !sameOriginRequest(r) {
-		http.Error(w, "cross-origin request rejected", http.StatusForbidden)
-		return
-	}
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form data", http.StatusBadRequest)
@@ -443,10 +439,6 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 
 func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *reviewQueue, id string) {
 	setNoStore(w)
-	if !sameOriginRequest(r) {
-		http.Error(w, "same-origin cancellation required", http.StatusForbidden)
-		return
-	}
 	if !sessionIDRE.MatchString(id) || !q.cancel(id) {
 		http.Error(w, "task cannot be cancelled", http.StatusConflict)
 		return
