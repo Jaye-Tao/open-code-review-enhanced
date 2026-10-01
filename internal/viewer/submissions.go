@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -404,15 +403,6 @@ func sameGitURL(a, b string) bool {
 	return normalize(a) == normalize(b)
 }
 
-func loopbackRequest(r *http.Request) bool {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-	ip := net.ParseIP(host)
-	return ip != nil && ip.IsLoopback()
-}
-
 func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQueue) {
 	setNoStore(w)
 	if r.Method == http.MethodGet {
@@ -422,10 +412,6 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", "GET, POST")
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-	if !loopbackRequest(r) {
-		http.Error(w, "review submissions are only accepted from this computer", http.StatusForbidden)
 		return
 	}
 	if !sameOriginRequest(r) {
@@ -447,7 +433,7 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 
 func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *reviewQueue, id string) {
 	setNoStore(w)
-	if !loopbackRequest(r) || !sameOriginRequest(r) {
+	if !sameOriginRequest(r) {
 		http.Error(w, "same-origin cancellation required", http.StatusForbidden)
 		return
 	}
