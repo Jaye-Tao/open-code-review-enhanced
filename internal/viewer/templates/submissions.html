@@ -1,0 +1,28 @@
+{{/*
+SPDX-License-Identifier: Apache-2.0
+Copyright 2026 alibaba/open-code-review Contributors
+*/}}
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>提交审核 - Open Code Review</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>{{template "app-header" .}}
+<main class="submissions-page">
+  <div class="page-heading page-heading-with-tools"><div><p class="eyebrow">审核工作台</p><h1>提交审核</h1><p class="page-subtitle">克隆或复用本地仓库，更新远程分支后进入审核队列。</p></div><a class="button button-secondary" href="/">返回仓库</a></div>
+  <section class="submission-form-card"><form method="post" action="/submissions" class="submission-form">
+    <div class="form-grid">
+      <label>Git 仓库地址<input name="git_url" type="text" required placeholder="https://example.com/team/project.git"></label>
+      <label>代码存放目录<input name="repo_dir" type="text" placeholder="默认：{{.RepoRoot}}"></label>
+      <label>审核分支<input name="target_branch" type="text" required placeholder="feature/example"></label>
+      <label>对比分支<input name="base_branch" type="text" required placeholder="main"></label>
+      <label>提交人<input name="submitted_by" type="text" required autocomplete="name"></label>
+      <label>恢复会话 ID<input name="resume_session_id" type="text" placeholder="可选"></label>
+    </div>
+    <label class="checkbox-label"><input name="default_prompt" type="checkbox"> 使用默认内置提示词（等同于 --default-prompt）</label>
+    <p class="form-help">执行前会运行 <code>git fetch origin</code>，审核使用 fetch 后的 <code>origin/</code> 分支引用；不会 checkout 或 pull。</p>
+    <button class="button button-primary" type="submit">提交审核</button>
+  </form></section>
+  <section><div class="list-toolbar"><span class="list-count">审核任务（同时运行上限：{{.MaxRunning}}）</span><span class="toolbar-hint">同一代码目录一次只运行一个任务</span></div>
+  {{if .Items}}<div class="table-scroll" role="region" aria-label="审核任务列表"><table class="table submissions-table"><thead><tr><th>状态</th><th>审核分支</th><th>对比分支</th><th>提交人</th><th>提交时间</th><th>恢复会话</th><th>默认提示词</th><th>结果会话</th><th>错误</th></tr></thead><tbody>
+  {{range .Items}}<tr><td><span class="status-pill status-{{.Status}}">{{submissionStatus .Status}}{{if eq .Status "queued"}} #{{.QueuePosition}}{{end}}</span>{{if or (eq .Status "queued") (eq .Status "preparing") (eq .Status "fetching") (eq .Status "running")}}<form method="post" action="/submissions/{{.ID}}/cancel" class="inline-form"><button class="button button-danger button-small" type="submit">取消</button></form>{{end}}</td><td title="{{.RepoDir}}">{{.TargetBranch}}</td><td>{{.BaseBranch}}</td><td>{{.SubmittedBy}}</td><td>{{formatTime .SubmittedAt}}</td><td>{{if .ResumeSessionID}}{{.ResumeSessionID}}{{else}}—{{end}}</td><td>{{if .DefaultPrompt}}是{{else}}否{{end}}</td><td>{{if .SessionID}}<code>{{.SessionID}}</code>{{else}}—{{end}}</td><td class="submission-error">{{.Error}}</td></tr>{{end}}
+  </tbody></table></div>{{else}}<div class="empty-state"><h3>暂无提交记录</h3><p>填写上方表单后，审核任务会出现在这里。</p></div>{{end}}</section>
+</main></body></html>
+{{define "breadcrumbs"}}<span class="sep">/</span><span class="current">提交审核</span>{{end}}

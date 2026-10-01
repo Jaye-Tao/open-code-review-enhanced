@@ -4,6 +4,7 @@
 package viewer
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"html/template"
@@ -171,6 +172,10 @@ func (w *prefixResponseWriter) flush() {
 // delete endpoint mutates records, after verifying a same-origin confirmation.
 func newMux(root string) *http.ServeMux {
 	mux := http.NewServeMux()
+	queue, err := newReviewQueue(root, configuredReviewLimit())
+	if err != nil {
+		queue = &reviewQueue{path: filepath.Join(root, "review-submissions.json"), repoRoot: "", limit: configuredReviewLimit(), active: make(map[string]context.CancelFunc)}
+	}
 
 	// Static assets.
 	mux.Handle("GET /static/", noStore(http.StripPrefix("/static/", http.FileServer(http.FS(staticFS())))))
@@ -178,6 +183,20 @@ func newMux(root string) *http.ServeMux {
 	// Routes
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 		handleRepos(w, r, root)
+	})
+	mux.HandleFunc("GET /submissions", func(w http.ResponseWriter, r *http.Request) {
+		handleReviewSubmissions(w, r, queue)
+	})
+	mux.HandleFunc("POST /submissions", func(w http.ResponseWriter, r *http.Request) {
+		handleReviewSubmissions(w, r, queue)
+	})
+	mux.HandleFunc("POST /submissions/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if !sessionIDRE.MatchString(id) {
+			http.Error(w, "invalid task ID", http.StatusBadRequest)
+			return
+		}
+		handleCancelReviewSubmission(w, r, queue, id)
 	})
 	mux.HandleFunc("GET /r/{repo}", func(w http.ResponseWriter, r *http.Request) {
 		repo := r.PathValue("repo")
@@ -425,12 +444,32 @@ func numberedCodeLines(code string, startLine, endLine int) []codeLine {
 
 func parseTemplate(name string) (*template.Template, error) {
 	funcMap := template.FuncMap{
-		"formatDuration":  formatDuration,
-		"formatTime":      formatTime,
-		"truncate":        truncateText,
-		"taskLabel":       func(t TaskType) string { return taskLabel(t) },
-		"modeLabel":       modeLabel,
-		"statusLabel":     statusLabel,
+		"formatDuration": formatDuration,
+		"formatTime":     formatTime,
+		"truncate":       truncateText,
+		"taskLabel":      func(t TaskType) string { return taskLabel(t) },
+		"modeLabel":      modeLabel,
+		"statusLabel":    statusLabel,
+		"submissionStatus": func(status string) string {
+			switch status {
+			case "queued":
+				return "排队中" // allow-non-english: localized viewer status label
+			case "preparing":
+				return "准备仓库" // allow-non-english: localized viewer status label
+			case "fetching":
+				return "更新分支" // allow-non-english: localized viewer status label
+			case "running":
+				return "审核中" // allow-non-english: localized viewer status label
+			case "success":
+				return "成功" // allow-non-english: localized viewer status label
+			case "failed":
+				return "失败" // allow-non-english: localized viewer status label
+			case "cancelled":
+				return "已取消" // allow-non-english: localized viewer status label
+			default:
+				return status
+			}
+		},
 		"severityLabel":   severityLabel,
 		"categoryLabel":   categoryLabel,
 		"formatNumber":    formatNumber,

@@ -6,7 +6,7 @@
 </head>
 <body>{{template "app-header" .}}
 <main class="repos-page">
-    <div class="page-heading page-heading-with-tools"><div><p class="eyebrow">审核工作台</p><h1>代码仓库</h1><p class="page-subtitle">选择仓库查看审核会话、问题明细和历史对比。</p></div>{{if .Repos}}<div class="repository-search"><label class="sr-only" for="repository-search-input">搜索仓库</label><div class="search-field"><input id="repository-search-input" type="search" placeholder="搜索仓库名称" autocomplete="off"><span class="search-icon" aria-hidden="true">{{icon "search"}}</span></div></div>{{end}}</div>
+    <div class="page-heading page-heading-with-tools"><div><p class="eyebrow">审核工作台</p><h1>代码仓库</h1><p class="page-subtitle">选择仓库查看审核会话、问题明细和历史对比。</p></div><a class="button button-primary" href="/submissions">提交审核</a>{{if .Repos}}<div class="repository-search"><label class="sr-only" for="repository-search-input">搜索仓库</label><div class="search-field"><input id="repository-search-input" type="search" placeholder="搜索仓库名称" autocomplete="off"><span class="search-icon" aria-hidden="true">{{icon "search"}}</span></div></div>{{end}}</div>
     {{if .Repos}}
     <div class="list-toolbar"><span class="list-count">共 {{len .Repos}} 个仓库</span><span class="toolbar-hint">数据按最近修改时间排序</span></div>
     <div class="table-scroll" role="region" aria-label="仓库列表"><table id="repositories-table" class="table"><thead><tr><th class="col-repository">仓库</th><th class="col-sessions">会话数</th><th class="col-modified">最近修改</th><th class="col-action">操作</th></tr></thead><tbody>
