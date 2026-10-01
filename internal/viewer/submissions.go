@@ -105,7 +105,7 @@ func validateSubmission(in ReviewSubmission) error {
 		return fmt.Errorf("Git repository URL is required")
 	}
 	if !validGitURL(in.GitURL) {
-		return fmt.Errorf("Git URL must use HTTPS, SSH, or the user@host:path form")
+		return fmt.Errorf("Git URL must use HTTP(S), SSH, or the user@host:path form")
 	}
 	if !branchNameRE.MatchString(in.TargetBranch) || strings.Contains(in.TargetBranch, "..") {
 		return fmt.Errorf("invalid target branch")
@@ -127,7 +127,7 @@ func validGitURL(raw string) bool {
 		return strings.Contains(raw, ":") && !strings.ContainsAny(raw, "\r\n")
 	}
 	u, err := url.Parse(raw)
-	return err == nil && (u.Scheme == "https" || u.Scheme == "ssh") && u.Host != "" && u.User == nil && !strings.ContainsAny(raw, "\r\n")
+	return err == nil && (u.Scheme == "http" || u.Scheme == "https" || u.Scheme == "ssh") && u.Host != "" && u.User == nil && !strings.ContainsAny(raw, "\r\n")
 }
 
 func (q *reviewQueue) submit(item ReviewSubmission) error {
