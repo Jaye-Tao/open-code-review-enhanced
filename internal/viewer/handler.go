@@ -87,7 +87,7 @@ func compareOutput(w http.ResponseWriter, r *http.Request, root, repo, format st
 
 func handleRepos(w http.ResponseWriter, r *http.Request, root string) {
 	setNoStore(w)
-	if r.URL.Path != "/" {
+	if r.URL.Path != "/" && r.URL.Path != "/repos" {
 		http.NotFound(w, r)
 		return
 	}

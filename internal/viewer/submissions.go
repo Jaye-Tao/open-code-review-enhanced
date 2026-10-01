@@ -406,7 +406,16 @@ func sameGitURL(a, b string) bool {
 func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQueue) {
 	setNoStore(w)
 	if r.Method == http.MethodGet {
-		renderTemplate(w, "submissions.html", map[string]any{"Items": q.snapshot(), "RepoRoot": q.repoRoot, "MaxRunning": q.limit})
+		if r.URL.Path == "/submit" || r.URL.Path == "/submissions" {
+			renderTemplate(w, "submit.html", map[string]any{"RepoRoot": q.repoRoot})
+			return
+		}
+		items := q.snapshot()
+		counts := map[string]int{"all": len(items)}
+		for _, item := range items {
+			counts[item.Status]++
+		}
+		renderTemplate(w, "tasks.html", map[string]any{"Items": items, "Counts": counts, "MaxRunning": q.limit})
 		return
 	}
 	if r.Method != http.MethodPost {
@@ -428,7 +437,7 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/submissions", http.StatusSeeOther)
+	http.Redirect(w, r, "/tasks", http.StatusSeeOther)
 }
 
 func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *reviewQueue, id string) {

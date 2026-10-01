@@ -208,6 +208,16 @@ nav.breadcrumb {
     backdrop-filter: blur(12px) saturate(180%);
     -webkit-backdrop-filter: blur(12px) saturate(180%);
 }
+.workbench-nav { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.workbench-tab { padding: .4rem .75rem; border-radius: var(--radius-sm); color: var(--text-secondary); text-decoration: none; font-weight: 600; }
+.workbench-tab:hover, .workbench-tab:focus-visible { color: var(--text-strong); background: var(--hover-row); }
+.workbench-tab-primary { color: var(--link); border: 1px solid var(--btn-border); }
+.task-stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--space-3); margin: var(--space-6) 0; }
+.task-stats div { display: flex; flex-direction: column; gap: .15rem; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.task-stats strong { color: var(--text-strong); font-size: 1.5rem; }
+.task-stats span { color: var(--text-secondary); font-size: .875rem; }
+.submission-form h2 { color: var(--text-strong); font-size: 1rem; margin-top: var(--space-2); }
+@media (max-width: 800px) { .task-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .workbench-tab { padding-inline: .45rem; font-size: .85rem; } }
 
 @supports (backdrop-filter: blur(12px)) and (background: color-mix(in srgb, red 50%, blue)) {
     nav.breadcrumb {

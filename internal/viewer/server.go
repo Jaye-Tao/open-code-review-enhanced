@@ -182,13 +182,25 @@ func newMux(root string) *http.ServeMux {
 
 	// Routes
 	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		handleRepos(w, r, root)
+		handleReviewSubmissions(w, r, queue)
+	})
+	mux.HandleFunc("GET /tasks", func(w http.ResponseWriter, r *http.Request) {
+		handleReviewSubmissions(w, r, queue)
+	})
+	mux.HandleFunc("GET /submit", func(w http.ResponseWriter, r *http.Request) {
+		handleReviewSubmissions(w, r, queue)
 	})
 	mux.HandleFunc("GET /submissions", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/submit", http.StatusSeeOther)
+	})
+	mux.HandleFunc("POST /submit", func(w http.ResponseWriter, r *http.Request) {
 		handleReviewSubmissions(w, r, queue)
 	})
 	mux.HandleFunc("POST /submissions", func(w http.ResponseWriter, r *http.Request) {
 		handleReviewSubmissions(w, r, queue)
+	})
+	mux.HandleFunc("GET /repos", func(w http.ResponseWriter, r *http.Request) {
+		handleRepos(w, r, root)
 	})
 	mux.HandleFunc("POST /submissions/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
@@ -447,6 +459,7 @@ func parseTemplate(name string) (*template.Template, error) {
 		"formatDuration": formatDuration,
 		"formatTime":     formatTime,
 		"truncate":       truncateText,
+		"baseName":       filepath.Base,
 		"taskLabel":      func(t TaskType) string { return taskLabel(t) },
 		"modeLabel":      modeLabel,
 		"statusLabel":    statusLabel,
