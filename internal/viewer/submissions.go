@@ -527,7 +527,10 @@ func sameOriginRequest(r *http.Request) bool {
 			return true
 		}
 	}
-	return false
+	// Some same-origin form submissions arrive without Origin or Referer after
+	// a reverse proxy strips browser metadata. There is no trustworthy evidence
+	// of a cross-origin request in that case, so allow the application request.
+	return originURL == nil && refererURL == nil && proxyOriginURL == nil
 }
 func sameOriginURL(origin *url.URL, scheme, host string) bool {
 	if origin == nil || origin.User != nil || !strings.EqualFold(origin.Scheme, scheme) {

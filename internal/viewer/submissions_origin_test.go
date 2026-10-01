@@ -18,6 +18,7 @@ func TestSameOriginRequestWithProxyHeaders(t *testing.T) {
 		{"forwarded standard header", "https://review.example.test", "", map[string]string{"Forwarded": "for=192.0.2.1;proto=https;host=review.example.test"}, true},
 		{"same origin referer", "", "https://review.example.test/submit", map[string]string{"X-Forwarded-Proto": "https", "X-Forwarded-Host": "review.example.test"}, true},
 		{"proxy via origin", "http://review.example.test:8200", "", map[string]string{"Via": "http://review.example.test:8200"}, true},
+		{"missing browser metadata", "", "", nil, true},
 		{"cross origin", "https://evil.example.test", "", map[string]string{"X-Forwarded-Proto": "https", "X-Forwarded-Host": "review.example.test"}, false},
 	}
 	for _, tt := range tests {

@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) Copyright 2026 Alibaba
 
-## 버전 1.1.7-test
+## 버전 1.1.8-test
 
 뷰어에 발견 항목 마크 필터를 추가하고 Git 작성자 표시를 개선했으며 중복된 발견 번호 제목을 제거합니다.
 
-[1.1.7-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.7-test/docs/release-notes-1.1.7-test.md)
+[1.1.8-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.8-test/docs/release-notes-1.1.8-test.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.1.7-test
+npm install -g open-code-review-enhanced@1.1.8-test
 ```

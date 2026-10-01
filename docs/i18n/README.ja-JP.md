@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
 
-## バージョン 1.1.7-test
+## バージョン 1.1.8-test
 
 ビューアーに指摘事項のマーク別フィルターを追加し、Git 作者情報の帰属を改善して、重複する指摘番号の見出しを削除しました。
 
-[1.1.7-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.7-test/docs/release-notes-1.1.7-test.md)
+[1.1.8-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.8-test/docs/release-notes-1.1.8-test.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.1.7-test
+npm install -g open-code-review-enhanced@1.1.8-test
 ```

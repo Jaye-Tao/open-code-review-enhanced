@@ -215,12 +215,12 @@ ocr delegate rule src/main.go src/handler.go
 
 [Apache-2.0](../../LICENSE) — Copyright 2026 Alibaba
 
-## 1.1.7-test 版本更新
+## 1.1.8-test 版本更新
 
 查看器新增评审发现标记筛选，改进 Git 作者归属，并移除多余的问题编号标题。
 
-[1.1.7-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.7-test/docs/release-notes-1.1.7-test.md)
+[1.1.8-test](https://github.com/Jaye-Tao/open-code-review-enhanced/blob/v1.1.8-test/docs/release-notes-1.1.8-test.md)
 
 ```sh
-npm install -g open-code-review-enhanced@1.1.7-test
+npm install -g open-code-review-enhanced@1.1.8-test
 ```
