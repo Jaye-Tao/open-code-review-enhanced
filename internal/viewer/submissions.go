@@ -492,6 +492,12 @@ func sameOriginRequest(r *http.Request) bool {
 		host = net.JoinHostPort(host, port)
 	}
 	var originURL, refererURL *url.URL
+	var proxyOriginURL *url.URL
+	if value := strings.TrimSpace(r.Header.Get("Via")); value != "" {
+		if parsed, err := url.Parse(value); err == nil && parsed.Scheme != "" && parsed.Host != "" && parsed.User == nil && parsed.Path == "" {
+			proxyOriginURL = parsed
+		}
+	}
 	if value := r.Header.Get("Origin"); value != "" {
 		origin, err := url.Parse(value)
 		if err == nil {
@@ -510,7 +516,18 @@ func sameOriginRequest(r *http.Request) bool {
 			return true
 		}
 	}
-	return originURL != nil && refererURL != nil && sameBrowserOrigin(originURL, refererURL)
+	if originURL != nil && refererURL != nil && sameBrowserOrigin(originURL, refererURL) {
+		return true
+	}
+	if proxyOriginURL != nil {
+		if originURL != nil && sameBrowserOrigin(originURL, proxyOriginURL) {
+			return true
+		}
+		if refererURL != nil && sameBrowserOrigin(refererURL, proxyOriginURL) {
+			return true
+		}
+	}
+	return false
 }
 func sameOriginURL(origin *url.URL, scheme, host string) bool {
 	if origin == nil || origin.User != nil || !strings.EqualFold(origin.Scheme, scheme) {
