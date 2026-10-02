@@ -434,7 +434,11 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	http.Redirect(w, r, "/tasks", http.StatusSeeOther)
+	redirectPath := "/tasks"
+	if prefix := strings.TrimRight(strings.TrimSpace(r.Header.Get("X-Forwarded-Prefix")), "/"); strings.HasPrefix(prefix, "/") {
+		redirectPath = prefix + redirectPath
+	}
+	http.Redirect(w, r, redirectPath, http.StatusSeeOther)
 }
 
 func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *reviewQueue, id string) {
