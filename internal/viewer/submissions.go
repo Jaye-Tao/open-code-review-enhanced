@@ -21,6 +21,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode"
 )
 
 const defaultReviewLimit = 2
@@ -105,7 +106,7 @@ func validBranchName(branch string) bool {
 		return false
 	}
 	for _, r := range branch {
-		if r < 0x20 || r == 0x7f || strings.ContainsRune("~^:?*[\\", r) {
+		if unicode.IsSpace(r) || r < 0x20 || r == 0x7f || strings.ContainsRune("~^:?*[\\", r) {
 			return false
 		}
 	}
