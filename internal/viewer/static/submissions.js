@@ -30,9 +30,14 @@
             for (const [name, text] of required) {
                 if (!String(data.get(name) || '').trim()) throw new Error(text);
             }
+            const encoded = new URLSearchParams();
+            for (const [name, value] of data.entries()) {
+                encoded.append(name, String(value));
+            }
             const response = await fetch(submitURL, {
                 method: 'POST',
-                body: data,
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                body: encoded.toString(),
                 credentials: 'same-origin',
                 redirect: 'follow'
             });
