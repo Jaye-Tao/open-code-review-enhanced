@@ -26,7 +26,7 @@ func TestValidateSubmissionReportsInvalidBranch(t *testing.T) {
 		BaseBranch:   "main",
 		SubmittedBy:  "reviewer",
 	}
-	if err := validateSubmission(item); err == nil || err.Error() != `审核分支 "feature name" 格式不正确，只能包含字母、数字、'.'、'_' 或 '/'` {
+	if err := validateSubmission(item); err == nil || err.Error() != `审核分支 "feature name" 格式不正确，请填写合法的 Git 分支名` {
 		t.Fatalf("validateSubmission() error = %v", err)
 	}
 }
