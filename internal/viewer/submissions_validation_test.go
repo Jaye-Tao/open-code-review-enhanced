@@ -12,7 +12,7 @@ func TestValidateSubmissionReportsInvalidBranch(t *testing.T) {
 		BaseBranch:   "main",
 		SubmittedBy:  "reviewer",
 	}
-	if err := validateSubmission(item); err == nil || err.Error() != `invalid target branch "feature name": use a branch name containing only letters, numbers, '.', '_' or '/'` {
+	if err := validateSubmission(item); err == nil || err.Error() != `审核分支 "feature name" 格式不正确，只能包含字母、数字、'.'、'_' 或 '/'` {
 		t.Fatalf("validateSubmission() error = %v", err)
 	}
 }

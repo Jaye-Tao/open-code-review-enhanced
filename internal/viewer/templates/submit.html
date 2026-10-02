@@ -7,11 +7,12 @@ Copyright 2026 alibaba/open-code-review Contributors
 <body>{{template "app-header" .}}
 <main class="submissions-page">
   <div class="page-heading page-heading-with-tools"><div><p class="eyebrow">审核工作台</p><h1>提交审核</h1><p class="page-subtitle">准备仓库、更新远程分支后，将任务加入审核队列。</p></div><a class="button button-secondary" href="/tasks">返回任务</a></div>
-  <section class="submission-form-card"><form method="post" action="/submit" class="submission-form">
+  <section class="submission-form-card"><form method="post" action="/submit" class="submission-form" novalidate>
     <h2>仓库信息</h2><div class="form-grid"><label>Git 仓库地址<input name="git_url" type="text" required placeholder="https://example.com/team/project.git"></label><label>代码存放目录<input name="repo_dir" type="text" placeholder="默认：{{.RepoRoot}}"></label></div>
     <h2>审核范围</h2><div class="form-grid"><label>审核分支<input name="target_branch" type="text" required placeholder="feature/example"></label><label>对比分支<input name="base_branch" type="text" required placeholder="main"></label><label>恢复会话 ID<input name="resume_session_id" type="text" placeholder="可选"></label></div>
     <h2>审核选项</h2><div class="form-grid"><label>提交人<input name="submitted_by" type="text" required autocomplete="name"></label></div><label class="checkbox-label"><input name="default_prompt" type="checkbox"> 使用默认内置提示词（等同于 --default-prompt）</label>
     <p class="form-help">执行前会运行 <code>git fetch origin</code>，审核使用 fetch 后的 <code>origin/</code> 分支引用；不会 checkout 或 pull。</p><button class="button button-primary" type="submit">提交到审核队列</button>
   </form></section>
+<div class="submission-error-modal" data-submission-error hidden><div class="submission-error-backdrop" data-submission-error-close></div><section class="submission-error-dialog" role="dialog" aria-modal="true" aria-labelledby="submission-error-title"><div class="submission-error-icon" aria-hidden="true">!</div><div><h2 id="submission-error-title">提交失败</h2><p data-submission-error-message>请检查表单内容后重试。</p></div><button class="button button-primary" type="button" data-submission-error-close>知道了</button></section></div>
 </main></body></html>
 {{define "breadcrumbs"}}<span class="sep">/</span><span class="current">提交审核</span>{{end}}

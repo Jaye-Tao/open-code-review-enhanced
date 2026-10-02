@@ -179,6 +179,14 @@ body {
 }
 
 .submission-form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-6); margin-bottom: var(--space-8); box-shadow: var(--shadow-sm); }
+.submission-error-modal[hidden] { display: none; }
+.submission-error-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 1.25rem; }
+.submission-error-backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, .48); backdrop-filter: blur(3px); }
+.submission-error-dialog { position: relative; display: grid; grid-template-columns: auto 1fr; gap: .85rem 1rem; width: min(28rem, 100%); padding: 1.35rem; border: 1px solid var(--border); border-radius: 1rem; background: var(--surface); box-shadow: 0 1.25rem 3rem rgba(0, 0, 0, .25); }
+.submission-error-icon { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--badge-error-bg); color: var(--badge-error-fg); font-weight: 800; }
+.submission-error-dialog h2 { margin: .1rem 0 .35rem; color: var(--text-strong); font-size: 1.05rem; }
+.submission-error-dialog p { margin: 0; color: var(--text-secondary); line-height: 1.55; overflow-wrap: anywhere; }
+.submission-error-dialog .button { grid-column: 2; justify-self: end; }
 .submission-form { display: grid; gap: var(--space-4); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
 .form-grid label { display: grid; gap: var(--space-1); font-weight: 600; color: var(--text-strong); }

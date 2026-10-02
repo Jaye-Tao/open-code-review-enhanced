@@ -102,22 +102,22 @@ var sessionIDRE = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 
 func validateSubmission(in ReviewSubmission) error {
 	if strings.TrimSpace(in.GitURL) == "" {
-		return fmt.Errorf("Git repository URL is required")
+		return fmt.Errorf("Git 仓库地址不能为空")
 	}
 	if !validGitURL(in.GitURL) {
-		return fmt.Errorf("Git URL must use HTTP(S), SSH, or the user@host:path form")
+		return fmt.Errorf("Git 仓库地址格式不正确，请使用 HTTP(S)、SSH 或 user@host:path 格式")
 	}
 	if !branchNameRE.MatchString(in.TargetBranch) || strings.Contains(in.TargetBranch, "..") {
-		return fmt.Errorf("invalid target branch %q: use a branch name containing only letters, numbers, '.', '_' or '/'", in.TargetBranch)
+		return fmt.Errorf("审核分支 %q 格式不正确，只能包含字母、数字、'.'、'_' 或 '/'", in.TargetBranch)
 	}
 	if !branchNameRE.MatchString(in.BaseBranch) || strings.Contains(in.BaseBranch, "..") {
-		return fmt.Errorf("invalid base branch %q: use a branch name containing only letters, numbers, '.', '_' or '/'", in.BaseBranch)
+		return fmt.Errorf("对比分支 %q 格式不正确，只能包含字母、数字、'.'、'_' 或 '/'", in.BaseBranch)
 	}
 	if in.SubmittedBy == "" || len(in.SubmittedBy) > 120 || strings.ContainsAny(in.SubmittedBy, "\r\n") {
-		return fmt.Errorf("submitter is required and must be at most 120 characters")
+		return fmt.Errorf("提交人不能为空，且不能超过 120 个字符")
 	}
 	if in.ResumeSessionID != "" && !sessionIDRE.MatchString(in.ResumeSessionID) {
-		return fmt.Errorf("invalid resume session ID")
+		return fmt.Errorf("恢复会话 ID 格式不正确")
 	}
 	return nil
 }
@@ -139,7 +139,7 @@ func (q *reviewQueue) submit(item ReviewSubmission) error {
 		pathPart = strings.ReplaceAll(pathPart, "\\", "/")
 		name := strings.TrimSuffix(filepath.Base(pathPart), ".git")
 		if name == "." || name == "" || name == string(filepath.Separator) {
-			return fmt.Errorf("could not infer repository directory from Git URL")
+			return fmt.Errorf("无法从 Git 仓库地址推断代码目录")
 		}
 		item.RepoDir = filepath.Join(q.repoRoot, name)
 	}
