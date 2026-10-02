@@ -331,9 +331,15 @@ func (q *reviewQueue) run(ctx context.Context, item ReviewSubmission) {
 		return
 	}
 	remote, err := runTaskCommandOutput(ctx, "git", "-C", item.RepoDir, "remote", "get-url", "origin")
-	if err != nil || !sameGitURL(string(remote), item.GitURL) {
-		fail(fmt.Errorf("repository origin does not match the submitted Git URL"))
+	if err != nil {
+		fail(fmt.Errorf("无法读取代码目录的 Git 远程地址：%w", err))
 		return
+	}
+	if !sameGitURL(string(remote), item.GitURL) {
+		if err := runTaskCommand(ctx, "git", "-C", item.RepoDir, "remote", "set-url", "origin", item.GitURL); err != nil {
+			fail(fmt.Errorf("无法更新 Git 远程地址，请确认代码目录权限：%w", err))
+			return
+		}
 	}
 	q.update(item.ID, "fetching", "", "")
 	if err := runTaskCommand(ctx, "git", "-C", item.RepoDir, "fetch", "origin"); err != nil {
@@ -421,7 +427,7 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 	setNoStore(w)
 	if r.Method == http.MethodGet {
 		if r.URL.Path == "/submit" || r.URL.Path == "/submissions" {
-			renderTemplate(w, "submit.html", map[string]any{"RepoRoot": q.repoRoot})
+			renderTemplate(w, "submit.html", map[string]any{"RepoRoot": q.repoRoot, "GitURL": r.URL.Query().Get("git_url"), "RepoDir": r.URL.Query().Get("repo_dir"), "TargetBranch": r.URL.Query().Get("target_branch"), "BaseBranch": r.URL.Query().Get("base_branch"), "SubmittedBy": r.URL.Query().Get("submitted_by"), "ResumeSessionID": r.URL.Query().Get("resume_session_id")})
 			return
 		}
 		items := q.snapshot()
