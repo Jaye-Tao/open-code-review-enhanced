@@ -97,8 +97,20 @@ func newReviewQueue(root string, limit int) (*reviewQueue, error) {
 	return q, nil
 }
 
-var branchNameRE = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$`)
 var sessionIDRE = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
+
+func validBranchName(branch string) bool {
+	branch = strings.TrimSpace(branch)
+	if branch == "" || len([]rune(branch)) > 200 || strings.Contains(branch, "..") {
+		return false
+	}
+	for _, r := range branch {
+		if r < 0x20 || r == 0x7f || strings.ContainsRune("~^:?*[\\", r) {
+			return false
+		}
+	}
+	return true
+}
 
 func validateSubmission(in ReviewSubmission) error {
 	if strings.TrimSpace(in.GitURL) == "" {
@@ -107,11 +119,11 @@ func validateSubmission(in ReviewSubmission) error {
 	if !validGitURL(in.GitURL) {
 		return fmt.Errorf("Git 仓库地址格式不正确，请使用 HTTP(S)、SSH 或 user@host:path 格式")
 	}
-	if !branchNameRE.MatchString(in.TargetBranch) || strings.Contains(in.TargetBranch, "..") {
-		return fmt.Errorf("审核分支 %q 格式不正确，只能包含字母、数字、'.'、'_' 或 '/'", in.TargetBranch)
+	if !validBranchName(in.TargetBranch) {
+		return fmt.Errorf("审核分支 %q 格式不正确，请填写合法的 Git 分支名", in.TargetBranch)
 	}
-	if !branchNameRE.MatchString(in.BaseBranch) || strings.Contains(in.BaseBranch, "..") {
-		return fmt.Errorf("对比分支 %q 格式不正确，只能包含字母、数字、'.'、'_' 或 '/'", in.BaseBranch)
+	if !validBranchName(in.BaseBranch) {
+		return fmt.Errorf("对比分支 %q 格式不正确，请填写合法的 Git 分支名", in.BaseBranch)
 	}
 	if in.SubmittedBy == "" || len(in.SubmittedBy) > 120 || strings.ContainsAny(in.SubmittedBy, "\r\n") {
 		return fmt.Errorf("提交人不能为空，且不能超过 120 个字符")

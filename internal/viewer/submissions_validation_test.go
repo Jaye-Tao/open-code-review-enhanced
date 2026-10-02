@@ -13,6 +13,12 @@ func TestValidGitURLAcceptsHTTP(t *testing.T) {
 	}
 }
 
+func TestValidBranchNameAcceptsUnicode(t *testing.T) {
+	if !validBranchName("dev_0810_分销升级") {
+		t.Fatal("validBranchName rejected a Unicode branch name")
+	}
+}
+
 func TestValidateSubmissionReportsInvalidBranch(t *testing.T) {
 	item := ReviewSubmission{
 		GitURL:       "https://git.example.test/team/project.git",
