@@ -36,7 +36,7 @@
                 const message = (await response.text()).trim() || '提交审核失败，请检查表单内容后重试。';
                 throw new Error(message);
             }
-            window.location.assign('/tasks');
+            window.location.assign('tasks');
         } catch (error) {
             showError(error instanceof Error ? error.message : '提交审核失败，请稍后重试。');
             if (button) button.disabled = false;
