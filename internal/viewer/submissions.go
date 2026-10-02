@@ -108,10 +108,10 @@ func validateSubmission(in ReviewSubmission) error {
 		return fmt.Errorf("Git URL must use HTTP(S), SSH, or the user@host:path form")
 	}
 	if !branchNameRE.MatchString(in.TargetBranch) || strings.Contains(in.TargetBranch, "..") {
-		return fmt.Errorf("invalid target branch")
+		return fmt.Errorf("invalid target branch %q: use a branch name containing only letters, numbers, '.', '_' or '/'", in.TargetBranch)
 	}
 	if !branchNameRE.MatchString(in.BaseBranch) || strings.Contains(in.BaseBranch, "..") {
-		return fmt.Errorf("invalid base branch")
+		return fmt.Errorf("invalid base branch %q: use a branch name containing only letters, numbers, '.', '_' or '/'", in.BaseBranch)
 	}
 	if in.SubmittedBy == "" || len(in.SubmittedBy) > 120 || strings.ContainsAny(in.SubmittedBy, "\r\n") {
 		return fmt.Errorf("submitter is required and must be at most 120 characters")
