@@ -1,24 +1,51 @@
 {
   "name": "open-code-review-enhanced",
-  "version": "1.1.15-test",
-  "description": "Platform binary for open-code-review (win32 x64)",
-  "os": [
-    "win32"
-  ],
-  "cpu": [
-    "x64"
-  ],
+  "version": "1.1.16-test",
+  "description": "OpenCodeReview CLI — AI-powered code review tool",
+  "bin": {
+    "ocr": "bin/ocr.js"
+  },
   "files": [
-    "bin/",
-    "docs/release-notes-1.1.15-test.md"
+    "bin/ocr.js",
+    "scripts/install.js",
+    "scripts/update.js",
+    "scripts/version.js",
+    "scripts/platform.js",
+    "prompts/open-code-review-background.md",
+    "imgs/",
+    "docs/release-notes-1.1.13-test.md",
+    "docs/release-notes-1.1.14-test.md",
+    "docs/release-notes-1.1.16-test.md"
   ],
-  "preferUnplugged": true,
-  "license": "Apache-2.0",
+  "scripts": {
+    "postinstall": "node scripts/install.js",
+    "test:github-actions": "node scripts/github-actions/post-review-comments.test.js && node scripts/github-actions/check-translation-sync.test.js && node scripts/github-actions/action-contract.test.js && node scripts/github-actions/check-plugin-contract.test.js",
+    "test:viewer": "node --test scripts/viewer-actions.test.mjs scripts/viewer-marks.test.mjs",
+    "test:update": "node scripts/version.test.js",
+    "test:install": "node scripts/install.test.js",
+    "test:launcher": "node bin/ocr.test.js"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Jaye-Tao/open-code-review-enhanced.git"
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "ocrConfig": {
+    "urlPattern": "https://github.com/Jaye-Tao/open-code-review-enhanced/releases/download/v{version}/opencodereview-{os}-{arch}",
+    "checksumPattern": "https://github.com/Jaye-Tao/open-code-review-enhanced/releases/download/v{version}/sha256sum.txt"
+  },
+  "optionalDependencies": {
+    "open-code-review-enhanced-darwin-arm64": "1.1.16-test",
+    "open-code-review-enhanced-darwin-x64": "1.1.16-test",
+    "open-code-review-enhanced-linux-arm64": "1.1.16-test",
+    "open-code-review-enhanced-linux-x64": "1.1.16-test",
+    "open-code-review-enhanced-win32-arm64": "1.1.16-test",
+    "open-code-review-enhanced-win32-x64": "1.1.16-test"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "license": "Apache-2.0"
 }
