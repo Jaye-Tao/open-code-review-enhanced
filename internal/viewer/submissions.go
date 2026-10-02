@@ -306,6 +306,19 @@ func (q *reviewQueue) cancel(id string) bool {
 	return false
 }
 
+func (q *reviewQueue) remove(id string) bool {
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	for i := range q.items {
+		if q.items[i].ID != id || q.items[i].Status == "queued" || q.items[i].Status == "preparing" || q.items[i].Status == "fetching" || q.items[i].Status == "running" { continue }
+		q.items = append(q.items[:i], q.items[i+1:]...)
+		q.reindexLocked()
+		_ = q.persistLocked()
+		return true
+	}
+	return false
+}
+
 func (q *reviewQueue) run(ctx context.Context, item ReviewSubmission) {
 	fail := func(err error) {
 		if errors.Is(ctx.Err(), context.Canceled) {
@@ -427,7 +440,7 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 	setNoStore(w)
 	if r.Method == http.MethodGet {
 		if r.URL.Path == "/submit" || r.URL.Path == "/submissions" {
-			renderTemplate(w, "submit.html", map[string]any{"RepoRoot": q.repoRoot, "GitURL": r.URL.Query().Get("git_url"), "RepoDir": r.URL.Query().Get("repo_dir"), "TargetBranch": r.URL.Query().Get("target_branch"), "BaseBranch": r.URL.Query().Get("base_branch"), "SubmittedBy": r.URL.Query().Get("submitted_by"), "ResumeSessionID": r.URL.Query().Get("resume_session_id")})
+			renderTemplate(w, "submit.html", map[string]any{"RepoRoot": q.repoRoot, "GitURL": r.URL.Query().Get("git_url"), "RepoDir": r.URL.Query().Get("repo_dir"), "TargetBranch": r.URL.Query().Get("target_branch"), "BaseBranch": r.URL.Query().Get("base_branch"), "SubmittedBy": r.URL.Query().Get("submitted_by"), "ResumeSessionID": r.URL.Query().Get("resume_session_id"), "DefaultPrompt": r.URL.Query().Get("default_prompt") == "1"})
 			return
 		}
 		items := q.snapshot()
@@ -467,6 +480,12 @@ func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *rev
 		return
 	}
 	http.Redirect(w, r, "/submissions", http.StatusSeeOther)
+}
+
+func handleDeleteReviewSubmission(w http.ResponseWriter, r *http.Request, q *reviewQueue, id string) {
+	setNoStore(w)
+	if !sessionIDRE.MatchString(id) || !q.remove(id) { http.Error(w, "任务只能在结束后删除", http.StatusConflict); return }
+	http.Redirect(w, r, "/tasks", http.StatusSeeOther)
 }
 
 func sameOriginRequest(r *http.Request) bool {

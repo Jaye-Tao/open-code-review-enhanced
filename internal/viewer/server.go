@@ -210,6 +210,11 @@ func newMux(root string) *http.ServeMux {
 		}
 		handleCancelReviewSubmission(w, r, queue, id)
 	})
+	mux.HandleFunc("POST /submissions/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		if !sessionIDRE.MatchString(id) { http.Error(w, "invalid task ID", http.StatusBadRequest); return }
+		handleDeleteReviewSubmission(w, r, queue, id)
+	})
 	mux.HandleFunc("GET /r/{repo}", func(w http.ResponseWriter, r *http.Request) {
 		repo := r.PathValue("repo")
 		if unsafeSegment(repo) {

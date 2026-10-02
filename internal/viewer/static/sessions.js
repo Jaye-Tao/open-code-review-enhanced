@@ -76,4 +76,10 @@
         if (progressRows.some(row => row.isConnected && row.dataset.sessionActive === 'true')) window.setTimeout(pollProgress, 1500);
     };
     if (progressRows.some(row => row.dataset.sessionActive === 'true')) pollProgress();
-})();
+    const formatElapsed = seconds => seconds < 60 ? `${seconds.toFixed(1)}s` : `${Math.floor(seconds / 60)}m${Math.floor(seconds % 60)}s`;
+    const refreshElapsed = () => progressRows.filter(row => row.isConnected && row.dataset.sessionActive === 'true').forEach(row => {
+        const started = Date.parse(row.dataset.sessionStart || '');
+        if (!Number.isNaN(started)) updateText(row, '[data-session-duration]', formatElapsed(Math.max(0, (Date.now() - started) / 1000)));
+    });
+    refreshElapsed();
+    window.setInterval(refreshElapsed, 1000);})();
