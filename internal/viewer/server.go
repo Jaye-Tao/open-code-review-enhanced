@@ -11,6 +11,8 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
@@ -202,6 +204,25 @@ func newMux(root string) *http.ServeMux {
 	mux.HandleFunc("GET /repos", func(w http.ResponseWriter, r *http.Request) {
 		handleRepos(w, r, root)
 	})
+	mux.HandleFunc("GET /session/{sessionID}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("sessionID")
+		if !sessionIDRE.MatchString(id) {
+			http.Error(w, "invalid session ID", http.StatusBadRequest)
+			return
+		}
+		entries, err := os.ReadDir(root)
+		if err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					if _, statErr := os.Stat(filepath.Join(root, entry.Name(), id+".jsonl")); statErr == nil {
+						http.Redirect(w, r, "/r/"+url.PathEscape(entry.Name())+"/"+id, http.StatusSeeOther)
+						return
+					}
+				}
+			}
+		}
+		http.Error(w, "session not found", http.StatusNotFound)
+	})
 	mux.HandleFunc("POST /submissions/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 		if !sessionIDRE.MatchString(id) {
@@ -212,7 +233,10 @@ func newMux(root string) *http.ServeMux {
 	})
 	mux.HandleFunc("POST /submissions/{id}/delete", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
-		if !sessionIDRE.MatchString(id) { http.Error(w, "invalid task ID", http.StatusBadRequest); return }
+		if !sessionIDRE.MatchString(id) {
+			http.Error(w, "invalid task ID", http.StatusBadRequest)
+			return
+		}
 		handleDeleteReviewSubmission(w, r, queue, id)
 	})
 	mux.HandleFunc("GET /r/{repo}", func(w http.ResponseWriter, r *http.Request) {
