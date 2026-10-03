@@ -311,7 +311,9 @@ func (q *reviewQueue) remove(id string) bool {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	for i := range q.items {
-		if q.items[i].ID != id || q.items[i].Status == "queued" || q.items[i].Status == "preparing" || q.items[i].Status == "fetching" || q.items[i].Status == "running" { continue }
+		if q.items[i].ID != id || q.items[i].Status == "queued" || q.items[i].Status == "preparing" || q.items[i].Status == "fetching" || q.items[i].Status == "running" {
+			continue
+		}
 		q.items = append(q.items[:i], q.items[i+1:]...)
 		q.reindexLocked()
 		_ = q.persistLocked()
@@ -493,8 +495,15 @@ func handleCancelReviewSubmission(w http.ResponseWriter, r *http.Request, q *rev
 
 func handleDeleteReviewSubmission(w http.ResponseWriter, r *http.Request, q *reviewQueue, id string) {
 	setNoStore(w)
-	if !sessionIDRE.MatchString(id) || !q.remove(id) { http.Error(w, "任务只能在结束后删除", http.StatusConflict); return }
-	http.Redirect(w, r, "/tasks", http.StatusSeeOther)
+	if !sessionIDRE.MatchString(id) || !q.remove(id) {
+		http.Error(w, "任务只能在结束后删除", http.StatusConflict)
+		return
+	}
+	path := "/tasks"
+	if prefix := forwardedPathPrefix(r); prefix != "" {
+		path = prefix + path
+	}
+	http.Redirect(w, r, path, http.StatusSeeOther)
 }
 
 func sameOriginRequest(r *http.Request) bool {

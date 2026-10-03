@@ -215,7 +215,11 @@ func newMux(root string) *http.ServeMux {
 			for _, entry := range entries {
 				if entry.IsDir() {
 					if _, statErr := os.Stat(filepath.Join(root, entry.Name(), id+".jsonl")); statErr == nil {
-						http.Redirect(w, r, "/r/"+url.PathEscape(entry.Name())+"/"+id, http.StatusSeeOther)
+						path := "/r/" + url.PathEscape(entry.Name()) + "/" + id
+						if prefix := forwardedPathPrefix(r); prefix != "" {
+							path = prefix + path
+						}
+						http.Redirect(w, r, path, http.StatusSeeOther)
 						return
 					}
 				}
@@ -309,6 +313,14 @@ func newMux(root string) *http.ServeMux {
 		})
 	}
 	return mux
+}
+
+func forwardedPathPrefix(r *http.Request) string {
+	prefix := strings.TrimRight(strings.TrimSpace(r.Header.Get("X-Forwarded-Prefix")), "/")
+	if strings.HasPrefix(prefix, "/") {
+		return prefix
+	}
+	return ""
 }
 
 // displayURL builds the URL to print and hand to the browser.
