@@ -48,6 +48,7 @@ type ReviewSubmission struct {
 	SubmittedBy     string    `json:"submitted_by"`
 	ResumeSessionID string    `json:"resume_session_id,omitempty"`
 	DefaultPrompt   bool      `json:"default_prompt"`
+	ExtraPrompt     string    `json:"extra_prompt,omitempty"`
 	Status          string    `json:"status"`
 	QueuePosition   int       `json:"queue_position,omitempty"`
 	StartedAt       time.Time `json:"started_at,omitempty"`
@@ -326,18 +327,23 @@ func (q *reviewQueue) run(ctx context.Context, item ReviewSubmission) {
 		}
 		q.update(item.ID, "failed", "", safeTaskError(err))
 	}
-	if err := os.MkdirAll(filepath.Dir(item.RepoDir), 0o755); err != nil {
+	if err := os.MkdirAll(item.RepoDir, 0o755); err != nil {
 		fail(err)
 		return
 	}
-	if _, err := os.Stat(item.RepoDir); errors.Is(err, os.ErrNotExist) {
-		if err := runTaskCommand(ctx, "git", "clone", "--", item.GitURL, item.RepoDir); err != nil {
+	if _, err := runTaskCommandOutput(ctx, "git", "-C", item.RepoDir, "rev-parse", "--git-dir"); err != nil {
+		name := strings.TrimSuffix(filepath.Base(strings.TrimSuffix(strings.Split(item.GitURL, "?")[0], "/")), ".git")
+		cloneDir := item.RepoDir
+		if filepath.Base(filepath.Clean(item.RepoDir)) != name {
+			cloneDir = filepath.Join(item.RepoDir, name)
+		}
+		if _, probeErr := runTaskCommandOutput(ctx, "git", "-C", cloneDir, "rev-parse", "--git-dir"); probeErr == nil {
+			item.RepoDir = cloneDir
+		} else if err := runTaskCommand(ctx, "git", "clone", "--", item.GitURL, cloneDir); err != nil {
 			fail(err)
 			return
 		}
-	} else if err != nil {
-		fail(err)
-		return
+		item.RepoDir = cloneDir
 	}
 	if _, err := runTaskCommandOutput(ctx, "git", "-C", item.RepoDir, "rev-parse", "--git-dir"); err != nil {
 		fail(fmt.Errorf("repository directory is not a Git repository: %w", err))
@@ -376,6 +382,9 @@ func (q *reviewQueue) run(ctx context.Context, item ReviewSubmission) {
 	args := []string{"review", "--repo", item.RepoDir, "--from", from, "--to", to, "--format", "json", "--audience", "agent"}
 	if item.DefaultPrompt {
 		args = append(args, "--default-prompt")
+	}
+	if item.ExtraPrompt != "" {
+		args = append(args, "--background", item.ExtraPrompt)
 	}
 	if item.ResumeSessionID != "" {
 		args = append(args, "--resume", item.ResumeSessionID)
@@ -440,7 +449,7 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 	setNoStore(w)
 	if r.Method == http.MethodGet {
 		if r.URL.Path == "/submit" || r.URL.Path == "/submissions" {
-			renderTemplate(w, "submit.html", map[string]any{"RepoRoot": q.repoRoot, "GitURL": r.URL.Query().Get("git_url"), "RepoDir": r.URL.Query().Get("repo_dir"), "TargetBranch": r.URL.Query().Get("target_branch"), "BaseBranch": r.URL.Query().Get("base_branch"), "SubmittedBy": r.URL.Query().Get("submitted_by"), "ResumeSessionID": r.URL.Query().Get("resume_session_id"), "DefaultPrompt": r.URL.Query().Get("default_prompt") == "1"})
+			renderTemplate(w, "submit.html", map[string]any{"RepoRoot": q.repoRoot, "GitURL": r.URL.Query().Get("git_url"), "RepoDir": r.URL.Query().Get("repo_dir"), "TargetBranch": r.URL.Query().Get("target_branch"), "BaseBranch": r.URL.Query().Get("base_branch"), "SubmittedBy": r.URL.Query().Get("submitted_by"), "ResumeSessionID": r.URL.Query().Get("resume_session_id"), "ExtraPrompt": r.URL.Query().Get("extra_prompt"), "DefaultPrompt": r.URL.Query().Get("default_prompt") == "1"})
 			return
 		}
 		items := q.snapshot()
@@ -456,12 +465,12 @@ func handleReviewSubmissions(w http.ResponseWriter, r *http.Request, q *reviewQu
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
+	r.Body = http.MaxBytesReader(w, r.Body, 2<<20)
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, "invalid form data", http.StatusBadRequest)
 		return
 	}
-	item := ReviewSubmission{GitURL: strings.TrimSpace(r.FormValue("git_url")), RepoDir: strings.TrimSpace(r.FormValue("repo_dir")), TargetBranch: strings.TrimSpace(r.FormValue("target_branch")), BaseBranch: strings.TrimSpace(r.FormValue("base_branch")), SubmittedBy: strings.TrimSpace(r.FormValue("submitted_by")), ResumeSessionID: strings.TrimSpace(r.FormValue("resume_session_id")), DefaultPrompt: r.FormValue("default_prompt") == "on"}
+	item := ReviewSubmission{GitURL: strings.TrimSpace(r.FormValue("git_url")), RepoDir: strings.TrimSpace(r.FormValue("repo_dir")), TargetBranch: strings.TrimSpace(r.FormValue("target_branch")), BaseBranch: strings.TrimSpace(r.FormValue("base_branch")), SubmittedBy: strings.TrimSpace(r.FormValue("submitted_by")), ResumeSessionID: strings.TrimSpace(r.FormValue("resume_session_id")), ExtraPrompt: r.FormValue("extra_prompt"), DefaultPrompt: r.FormValue("default_prompt") == "on"}
 	if err := q.submit(item); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
